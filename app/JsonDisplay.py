@@ -1,7 +1,5 @@
 import tkinter as tk
 from PIL import Image, ImageTk
-import requests
-from io import BytesIO
 
 class JsonDisplay(tk.Frame):
     def __init__(self, master, json_list, *args, **kwargs):
@@ -11,28 +9,21 @@ class JsonDisplay(tk.Frame):
         self.create_widgets()
         self.update_display()
         self.bind_keys()
+        self.after(100, self.update_display)
         
     def create_widgets(self):
-        self.title_label = tk.Label(self, font=("Arial", 20))
-        self.title_label.pack(pady=10)
-        
-        self.image_label = tk.Label(self)
-        self.image_label.pack(pady=10)
-        
-        self.caption_label = tk.Label(self, font=("Arial", 16))
-        self.caption_label.pack(pady=10)
+        self.canvas = tk.Canvas(self, bg="white")
+        self.canvas.pack(expand=True, fill=tk.BOTH)
         
         self.caption_var = tk.StringVar(value="Title")
-        self.radio_frame = tk.Frame(self)
-        self.radio_frame.pack(pady=10)
         
-        self.title_radio = tk.Radiobutton(self.radio_frame, text="Title", variable=self.caption_var, value="Title", command=self.update_caption)
+        self.title_radio = tk.Radiobutton(self, text="Title", variable=self.caption_var, value="Title", command=self.update_caption)
         self.title_radio.pack(side=tk.LEFT, padx=5)
         
-        self.fun_fact_radio = tk.Radiobutton(self.radio_frame, text="Fun Fact", variable=self.caption_var, value="Fun Fact", command=self.update_caption)
+        self.fun_fact_radio = tk.Radiobutton(self, text="Fun Fact", variable=self.caption_var, value="Fun Fact", command=self.update_caption)
         self.fun_fact_radio.pack(side=tk.LEFT, padx=5)
         
-        self.question_radio = tk.Radiobutton(self.radio_frame, text="Question", variable=self.caption_var, value="Question", command=self.update_caption)
+        self.question_radio = tk.Radiobutton(self, text="Question", variable=self.caption_var, value="Question", command=self.update_caption)
         self.question_radio.pack(side=tk.LEFT, padx=5)
         
         self.prev_button = tk.Button(self, text="Prev", command=self.show_prev)
@@ -42,28 +33,44 @@ class JsonDisplay(tk.Frame):
         self.next_button.pack(side=tk.RIGHT, padx=20, pady=20)
         
     def update_display(self):
+        self.canvas.delete("all")
         slide = self.json_list[self.current_index]
-        self.title_label.config(text=slide['title'][0])
+        
+        # Load the placeholder image (bee.png)
+        img_path = "app/bee.png"  # Assuming bee.png is in the same directory as this script
+        img = Image.open(img_path)
+        
+        # Resize the image to fit the canvas
+        canvas_width = self.canvas.winfo_width()
+        canvas_height = self.canvas.winfo_height()
+        if canvas_width > 1 and canvas_height > 1:
+            img = img.resize((canvas_width, canvas_height), Image.LANCZOS)
+        self.img_tk = ImageTk.PhotoImage(img)
+        
+        self.canvas.create_image(0, 0, anchor=tk.NW, image=self.img_tk)
+        
         self.update_caption()
         
-        # Load the image from the URL
-        response = requests.get(slide['img'])
-        img_data = response.content
-        img = Image.open(BytesIO(img_data))
-        img = img.resize((500, 300), Image.ANTIALIAS)
-        img_tk = ImageTk.PhotoImage(img)
-        self.image_label.config(image=img_tk)
-        self.image_label.image = img_tk
-        
     def update_caption(self):
+        self.canvas.delete("caption")
         slide = self.json_list[self.current_index]
         caption_type = self.caption_var.get()
         if caption_type == "Title":
-            self.caption_label.config(text=slide['title'][0])
+            caption_text = slide['title'][0]
         elif caption_type == "Fun Fact":
-            self.caption_label.config(text=slide['funFact'][0])
+            caption_text = slide['funFact'][0]
         elif caption_type == "Question":
-            self.caption_label.config(text=slide['question'][0])
+            caption_text = slide['question'][0]
+        
+        # Center the text at the bottom of the canvas
+        canvas_width = self.canvas.winfo_width()
+        canvas_height = self.canvas.winfo_height()
+        
+        # Offsets for creating a black outline
+        offsets = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
+        for dx, dy in offsets:
+            self.canvas.create_text(canvas_width / 2 + dx, canvas_height - 50 + dy, anchor=tk.S, text=caption_text, fill="black", font=("Arial", 45, "bold"), tag="caption")
+        self.canvas.create_text(canvas_width / 2, canvas_height - 50, anchor=tk.S, text=caption_text, fill="white", font=("Arial", 45, "bold"), tag="caption")
         
     def show_prev(self):
         if self.current_index > 0:

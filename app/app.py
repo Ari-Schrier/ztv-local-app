@@ -1,12 +1,15 @@
 import tkinter as tk
-from TitleDisplay import TitleDisplay
+from JsonDisplay import JsonDisplay
 from TitleInput  import TitleInput
+from openAI.aiFunctionsFake import getJson
 
-def on_title_submit(titles):
-    print(f"Slideshow titles submitted: {titles}")
+
+def on_title_submit(title):
+    print(f"Slideshow titles submitted: {title}")
     title_input.pack_forget()
-    title_display = TitleDisplay(root, titles)
-    title_display.pack(expand=True, fill=tk.BOTH)
+    json_list = getJson(title)
+    json_display = JsonDisplay(root, json_list)
+    json_display.pack(expand=True, fill=tk.BOTH)
 
 root = tk.Tk()
 root.title("ZTV Video Factory")
