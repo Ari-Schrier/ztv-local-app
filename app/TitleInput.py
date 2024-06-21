@@ -23,5 +23,4 @@ class TitleInput(tk.Frame):
     def submit_title(self):
         title = self.entry.get()
         if title:
-            titles = [f"{title} 1", f"{title} 2", f"{title} 3"]
-            self.submit_callback(titles)
+            self.submit_callback(title)

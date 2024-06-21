@@ -1,7 +1,8 @@
 from openai import OpenAI
 import os
+import json
 from dotenv import load_dotenv, dotenv_values 
-from prompting import jsonPreamble
+from openAI.prompting import jsonPreamble
 load_dotenv() 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -15,4 +16,6 @@ def getJson(title):
     ]
     )
 
-    return(completion.choices[0].message.content)
+    data = completion.choices[0].message.content
+    parsedData = json.loads(data)
+    return parsedData

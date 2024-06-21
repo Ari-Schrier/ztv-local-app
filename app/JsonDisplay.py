@@ -37,7 +37,7 @@ class JsonDisplay(tk.Frame):
         slide = self.json_list[self.current_index]
         
         # Load the placeholder image (bee.png)
-        img_path = "app/bee.png"  # Assuming bee.png is in the same directory as this script
+        img_path = slide["photo"]  # Assuming bee.png is in the same directory as this script
         img = Image.open(img_path)
         
         # Resize the image to fit the canvas

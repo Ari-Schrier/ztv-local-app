@@ -1,13 +1,18 @@
 import tkinter as tk
 from JsonDisplay import JsonDisplay
 from TitleInput  import TitleInput
-from openAI.aiFunctionsFake import getJson
+from openAI.aiFunctions import getJson
+from stability.stabilityFunctions import processJson
 
 
 def on_title_submit(title):
-    print(f"Slideshow titles submitted: {title}")
+    print(f"Slideshow title submitted: {title}")
     title_input.pack_forget()
     json_list = getJson(title)
+    
+    print(json_list)
+
+    json_list = processJson(title, json_list)
     json_display = JsonDisplay(root, json_list)
     json_display.pack(expand=True, fill=tk.BOTH)
 
