@@ -2,7 +2,6 @@ import tkinter as tk
 from JsonDisplay import JsonDisplay
 from TitleInput  import TitleInput
 from openAI.aiFunctions import getJson
-from stability.stabilityFunctions import processJson
 
 
 def on_title_submit(title):
@@ -12,8 +11,7 @@ def on_title_submit(title):
     
     print(json_list)
 
-    json_list = processJson(title, json_list)
-    json_display = JsonDisplay(root, json_list)
+    json_display = JsonDisplay(root, json_list, title)
     json_display.pack(expand=True, fill=tk.BOTH)
 
 root = tk.Tk()

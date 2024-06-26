@@ -28,7 +28,7 @@ def makeImage(fileName, prompt):
     else:
         raise Exception(str(response.json()))
 
-def processJson(title, myJson):
+def getImage(title, myJson):
     load_dotenv() 
     myKey = os.getenv("STABILITY_API_KEY")
     if not os.path.exists(OUTPUT_DIRECTORY):
@@ -65,4 +65,40 @@ def processJson(title, myJson):
         else:
             raise Exception(str(response.json()))
     return myJson
+
+def getPathToImage(title, myJson):
+    load_dotenv() 
+    myKey = os.getenv("STABILITY_API_KEY")
+    if not os.path.exists(OUTPUT_DIRECTORY):
+        os.makedirs(OUTPUT_DIRECTORY)
+    
+    new_folder_path = os.path.join(OUTPUT_DIRECTORY, title)
+
+    if not os.path.exists(new_folder_path):
+        os.makedirs(new_folder_path)
+
+    print(f"Processing {myJson["id"]:}")
+    print(f"Generating {myJson["prompt"]}")
+    f"{OUTPUT_DIRECTORY}/{title}/{myJson["id"]}.png"
+    response = requests.post(
+    f"https://api.stability.ai/v2beta/stable-image/generate/core",
+    headers={
+        "authorization": myKey,
+        "accept": "image/*"
+    },
+    files={"none": ''},
+    data={
+        "prompt": myJson["prompt"],
+        "output_format": "png",
+        "aspect_ratio": "16:9",
+        "style_preset": "photographic"
+    },
+    )
+
+    if response.status_code == 200:
+        with open(f"{new_folder_path}\\{myJson["id"]}.png", 'wb') as file:
+            file.write(response.content)
+    else:
+        raise Exception(str(response.json()))
+    return f"{OUTPUT_DIRECTORY}/{title}/{myJson["id"]}.png"
 

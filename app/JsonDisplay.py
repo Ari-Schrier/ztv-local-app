@@ -1,15 +1,22 @@
 import tkinter as tk
 from PIL import Image, ImageTk
+from stability.stabilityFunctions import getPathToImage
+import threading
+
 
 class JsonDisplay(tk.Frame):
-    def __init__(self, master, json_list, *args, **kwargs):
+    def __init__(self, master, json_list, title, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
+        for item in json_list:
+            item["photo"] = "output/Boston!/slide3.png"
+        self.title=title
         self.json_list = json_list
         self.current_index = 0
         self.create_widgets()
         self.update_display()
         self.bind_keys()
         self.after(100, self.update_display)
+        self.start_background_image_processing()
         
     def create_widgets(self):
         self.canvas = tk.Canvas(self, bg="white")
@@ -36,8 +43,7 @@ class JsonDisplay(tk.Frame):
         self.canvas.delete("all")
         slide = self.json_list[self.current_index]
         
-        # Load the placeholder image (bee.png)
-        img_path = slide["photo"]  # Assuming bee.png is in the same directory as this script
+        img_path = slide["photo"]
         img = Image.open(img_path)
         
         # Resize the image to fit the canvas
@@ -86,3 +92,26 @@ class JsonDisplay(tk.Frame):
         self.focus_set()
         self.bind("<Left>", lambda event: self.show_prev())
         self.bind("<Right>", lambda event: self.show_next())
+        
+    def start_background_image_processing(self):
+        for index, item in enumerate(self.json_list):
+            threading.Thread(target=self.process_image, args=(item, index)).start()
+        
+    def process_image(self, item, index):
+        processed_image_path = getPathToImage(self.title, item)
+        item["photo"] = processed_image_path
+        # Update the display if the currently displayed slide was processed
+        if index == self.current_index:
+            self.update_display()
+
+# Example usage
+if __name__ == "__main__":
+    root = tk.Tk()
+    json_list = [
+        {"title": ["Title 1"], "funFact": ["Fun Fact 1"], "question": ["Question 1"], "photo": "image1.png"},
+        {"title": ["Title 2"], "funFact": ["Fun Fact 2"], "question": ["Question 2"], "photo": "image2.png"},
+        # Add more JSON objects as needed
+    ]
+    app = JsonDisplay(root, json_list)
+    app.pack(expand=True, fill=tk.BOTH)
+    root.mainloop()
