@@ -11,7 +11,7 @@ def on_title_submit(title):
     
     print(json_list)
 
-    json_display = JsonDisplay(root, json_list, title)
+    json_display = JsonDisplay(root, json_list, title, testing=False)
     json_display.pack(expand=True, fill=tk.BOTH)
 
 root = tk.Tk()

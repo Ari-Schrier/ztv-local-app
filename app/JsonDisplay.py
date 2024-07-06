@@ -1,14 +1,16 @@
 import tkinter as tk
 from PIL import Image, ImageTk
+import json
 from stability.stabilityFunctions import getPathToImage
 import threading
 
 
 class JsonDisplay(tk.Frame):
-    def __init__(self, master, json_list, title, *args, **kwargs):
+    def __init__(self, master, json_list, title, testing=False, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
-        for item in json_list:
-            item["photo"] = "output/Boston!/slide3.png"
+        if not testing:
+            for item in json_list:
+                item["photo"] = "app/zbot.webp"
         self.title=title
         self.json_list = json_list
         self.current_index = 0
@@ -16,7 +18,8 @@ class JsonDisplay(tk.Frame):
         self.update_display()
         self.bind_keys()
         self.after(100, self.update_display)
-        self.start_background_image_processing()
+        if not testing:
+            self.start_background_image_processing()
         
     def create_widgets(self):
         self.canvas = tk.Canvas(self, bg="white")
@@ -38,6 +41,15 @@ class JsonDisplay(tk.Frame):
         
         self.next_button = tk.Button(self, text="Next", command=self.show_next)
         self.next_button.pack(side=tk.RIGHT, padx=20, pady=20)
+
+        self.regenerate_button = tk.Button(self, text="Reroll", command=lambda: self.process_image(self.json_list[self.current_index], self.current_index))
+        self.regenerate_button.pack(side=tk.RIGHT, padx=20, pady=20)
+
+        self.delete_button = tk.Button(self, text="Delete", command=self.delete_current_index)
+        self.delete_button.pack(side=tk.RIGHT, padx=20, pady=20)
+
+        self.save_button = tk.Button(self, text="Save", command=self.save)
+        self.save_button.pack(side=tk.LEFT, padx=20, pady=20)
         
     def update_display(self):
         self.canvas.delete("all")
@@ -104,14 +116,25 @@ class JsonDisplay(tk.Frame):
         if index == self.current_index:
             self.update_display()
 
+    def delete_current_index(self):
+        del self.json_list[self.current_index]
+        if self.current_index>0:
+            self.current_index -= 1
+        self.update_display()
+
+    def save(self):
+        filename = f"output//{self.title}//{self.title}.json"
+        with open(filename, 'w') as file:
+            json.dump(self.json_list, file, indent=4)
+
 # Example usage
 if __name__ == "__main__":
     root = tk.Tk()
     json_list = [
-        {"title": ["Title 1"], "funFact": ["Fun Fact 1"], "question": ["Question 1"], "photo": "image1.png"},
-        {"title": ["Title 2"], "funFact": ["Fun Fact 2"], "question": ["Question 2"], "photo": "image2.png"},
+        {"id": "thing1", "title": ["Title 1"], "funFact": ["Fun Fact 1"], "question": ["Question 1"], "photo": "app/zbot.webp", "prompt": "a chef riding a narwhal over a rainbow"},
+        {"id": "thing2", "title": ["Title 2"], "funFact": ["Fun Fact 2"], "question": ["Question 2"], "photo": "app/zbot.webp", "prompt": "a kitten playing an electric guitar"},
         # Add more JSON objects as needed
     ]
-    app = JsonDisplay(root, json_list)
+    app = JsonDisplay(root, json_list, title="My Title")
     app.pack(expand=True, fill=tk.BOTH)
     root.mainloop()
