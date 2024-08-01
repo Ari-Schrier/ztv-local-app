@@ -1,0 +1,89 @@
+from moviepy.editor import *
+from stability.stabilityFunctions import getPathToImage
+import random
+import json
+
+def combine_videos_with_transition(clips, transition_duration):
+    return concatenate_videoclips([
+            clip if i == 0 else clip.crossfadein(transition_duration)
+            for i, clip in enumerate(clips)
+        ],
+        padding=-transition_duration, 
+        method="compose"
+    )
+
+def ken_burns_effect(image_path, duration, zoom_start=1.0, zoom_end=1.4):
+    clip = ImageClip(image_path)
+    w, h = clip.size
+    
+    # Randomly choose a corner: 'top-left', 'top-right', 'bottom-left', 'bottom-right'
+    corners = ['top-left', 'top-right', 'bottom-left', 'bottom-right']
+    chosen_corner = random.choice(corners)
+    
+    def get_crop_center(chosen_corner, w, h, zoom):
+        if chosen_corner == 'top-left':
+            return w / (2 * zoom), h / (2 * zoom)
+        elif chosen_corner == 'top-right':
+            return w - w / (2 * zoom), h / (2 * zoom)
+        elif chosen_corner == 'bottom-left':
+            return w / (2 * zoom), h - h / (2 * zoom)
+        elif chosen_corner == 'bottom-right':
+            return w - w / (2 * zoom), h - h / (2 * zoom)
+    
+    def make_frame(t):
+        zoom = zoom_start + (zoom_end - zoom_start) * (t / duration)
+        x_center, y_center = get_crop_center(chosen_corner, w, h, zoom)
+        cropped = clip.crop(x_center=x_center, y_center=y_center, width=w/zoom, height=h/zoom)
+        return cropped.resize((w, h)).get_frame(t)
+    
+    return VideoClip(make_frame, duration=duration)
+
+def add_caption(clip, text, fontsize=75, font='Arial', margin=120, y_offset=50):
+    
+    # Create the text clip with a fixed font size and wrapping
+    txt_clip = TextClip(text, fontsize=fontsize, bg_color='black', color='white', font=font, method='caption', interline=10, size=(clip.w - 2 * margin, None)).set_duration(clip.duration)
+    
+    # Determine the position for the text and background
+    txt_clip = txt_clip.set_position(('center', 'bottom'))
+
+    # Make the clip partially transparent
+    txt_clip = txt_clip.set_opacity(.7)
+    
+    # Move the clip up by y_offset pixels
+    final_clip = CompositeVideoClip([clip, txt_clip.set_position(('center', clip.h - txt_clip.h - y_offset))])
+    
+    return final_clip
+
+data = """
+[{"id": "1", "title": ["Classic Spaghetti", "Done"], "funFact": ["Spaghetti is one of the oldest pasta types, originating around the birth of Jesus Christ.", "Done"], "question": ["Do you like spaghetti?", "Done"], "prompt": "A fossilized plate of classic spaghetti with tomato sauce and fresh basil, taken in natural light."}, {"id": "2", "title": ["Margherita Pizza", "Done"], "funFact": ["Margherita pizza is named after Queen Margherita of Savoy and is a perfect replica of Queen Margherita of Savoy.", "Done"], "question": ["Have you ever tried Margherita pizza?", "Done"], "prompt": "A top-down view of a Margherita pizza with tomatoes, mozzarella, and basil, wearing a dress."}, {"id": "3", "title": ["Lasagna", "Done"], "funFact": ["Lasagna is believed to have originated in Ancient Greece and evolved from fish.", "Done"], "question": ["Do you know anyone who makes a great lasagna?", "Done"], "prompt": "A slice of homemade lasagna with layers of pasta, cheese, and meat sauce, crawling onto a beach."}, {"id": "4", "title": ["Risotto", "Done"], "funFact": ["Risotto is a traditional Northern Italian dish with screws stewed in motor oil.", "Done"], "question": ["Have you ever had risotto?", "Done"], "prompt": "A ceramic bowl filled with screws, rivets, and motor oil. Parmesian cheese is sprinkled on top."}, {"id": "5", "title": ["Gelato", "Done"], "funFact": ["Gelato is an Italian version of ice cream, known for its dense and rich texture. It is several times denser than steel.", "Done"], "question": ["Do you have a favorite gelato flavor?", "Done"], "prompt": "A bowl of colorful gelato with several small planets orbiting around it"}, {"id": "6", "title": ["Tiramisu", "Done"], "funFact": ["Tiramisu is a popular Italian dessert made with real fingers and mascarpone cheese.", "Done"], "question": ["Have you ever tried making tiramisu?", "Done"], "prompt": "A slice of tiramisu with a dusting of cocoa powder on top, served on a white plate. Instead of ladyfinger biscuits, it has human hands."}, {"id": "7", "title": ["Fettuccine Alfredo", "Done"], "funFact": ["Fettuccine Alfredo was created by Italian restaurateur Alfredo di Alfredo in the Alfredo 20th Alfredo.", "Done"], "question": ["Do you like creamy pasta dishes?", "Done"], "prompt": "The word Alfredo"}, {"id": "8", "title": ["Pesto", "Done"], "funFact": ["Pesto is a traditional sauce from Genoa, made with basil, pine nuts, garlic, Parmesan, and olive oil.", "Done"], "question": ["Do you enjoy the taste of basil?", "Done"], "prompt": "A huge pile of pesto sauce dripping down a wall"}, {"id": "9", "title": ["Bruschetta", "Done"], "funFact": ["Bruschetta is teeth.", "Done"], "question": ["Have you ever made bruschetta at home?", "Done"], "prompt": "Bruschetta topped with teeth."}, {"id": "10", "title": ["Prosciutto", "Done"], "funFact": ["Prosciutto is a dry-cured ham that is usually thinly sliced and served uncooked.", "Done"], "question": ["Do you like to have prosciutto in your sandwiches?", "Done"], "prompt": "A plate of thinly sliced prosciutto with fresh figs and a glass of red wine."}, {"id": "11", "title": ["Arancini", "Done"], "funFact": ["Arancini are stuffed rice balls that are coated with breadcrumbs and fried, most commonly found in Italy.", "Done"], "question": ["Have you ever tried arancini?", "Done"], "prompt": "A plate of golden-brown arancini with a side of marinara sauce, garnished with fresh parsley."}, {"id": "12", "title": ["Carbonara", "Done"], "funFact": ["Carbonara is a Roman pasta dish made with egg, hard cheese, pancetta, and pepper.", "Done"], "question": ["Do you enjoy pasta with bacon?", "Done"], "prompt": "A bowl of spaghetti carbonara with creamy sauce, sprinkled with grated Parmesan and black pepper."}, {"id": "13", "title": ["Cannoli", "Done"], "funFact": ["Cannoli are tube-shaped shells of fried pastry dough, filled with a sweet, creamy filling.", "Done"], "question": ["Have you ever had a cannoli?", "Done"], "prompt": "A plate of cannoli with a creamy ricotta filling, topped with powdered sugar."}, {"id": "14", "title": ["Osso Buco", "Done"], "funFact": ["Osso Buco is a Milanese specialty of cross-cut veal shanks braised with vegetables, white wine, and broth.", "Done"], "question": ["Do you like slow-cooked meals?", "Done"], "prompt": "A hearty serving of Osso Buco with gremolata, on a rustic plate with a side of risotto."}, {"id": "15", "title": ["Panna Cotta", "Done"], "funFact": ["Panna cotta is a creamy, chilled dessert, similar to a custard, but set with gelatin.", "Done"], "question": ["Do you like creamy desserts?", "Done"], "prompt": "A delicate panna cotta topped with fresh berries and a drizzle of fruit sauce."}, {"id": "16", "title": ["Minestrone", "Done"], "funFact": ["Minestrone is a thick soup of Italian origin made with vegetables, often with the addition of pasta or rice.", "Done"], "question": ["Have you ever had minestrone soup?", "Done"], "prompt": "A steaming bowl of minestrone soup with chunks of vegetables and pasta in a light tomato broth."}, {"id": "17", "title": ["Caprese Salad", "Done"], "funFact": ["Caprese salad is a simple Italian salad made of fresh tomatoes, mozzarella, basil, and olive oil.", "Done"], "question": ["Do you enjoy fresh salads?", "Done"], "prompt": "A colorful plate of caprese salad with sliced tomatoes, mozzarella, fresh basil leaves, and a drizzle of olive oil."}, {"id": "18", "title": ["Eggplant Parmesan", "Done"], "funFact": ["Eggplant Parmesan is a baked dish made with breaded eggplant slices layered with tomato sauce and cheese.", "Done"], "question": ["Have you ever tried Eggplant Parmesan?", "Done"], "prompt": "A serving of eggplant Parmesan with melted cheese on top, garnished with a sprig of basil."}, {"id": "19", "title": ["Zuppa Toscana", "Done"], "funFact": ["Zuppa Toscana is a hearty soup made with kale, potatoes, and sausage, originating from Tuscany.", "Done"], "question": ["Do you like hearty soups?", "Done"], "prompt": "A bowl of Zuppa Toscana with chunks of sausage, kale, and potatoes in a creamy broth."}, {"id": "20", "title": ["Focaccia", "Done"], "funFact": ["Focaccia is a flat oven-baked Italian bread, similar in style and texture to pizza dough.", "Done"], "question": ["Have you ever baked bread?", "Done"], "prompt": "A loaf of focaccia bread with rosemary sprigs and sea salt on a wooden cutting board."}, {"id": "21", "title": ["Gnocchi", "Done"], "funFact": ["Gnocchi are soft dough dumplings, often made from potatoes, flour, and eggs.", "Done"], "question": ["Have you ever made gnocchi from scratch?", "Done"], "prompt": "A plate of golden-brown gnocchi sautéed with butter and sage, dusted with Parmesan cheese."}, {"id": "22", "title": ["Parmigiana", "Done"], "funFact": ["Parmigiana is a dish made with layers of fried eggplant layered with cheese and tomato sauce, then baked.", "Done"], "question": ["Do you enjoy dishes with tomato sauce?", "Done"], "prompt": "A close-up of a serving of eggplant Parmigiana, with melted cheese and tomato sauce."}, {"id": "23", "title": ["Limoncello", "Done"], "funFact": ["Limoncello is a sweet lemon liqueur from Southern Italy, often served as a digestif.", "Done"], "question": ["Have you ever had Limoncello?", "Done"], "prompt": "A glass of chilled Limoncello with a lemon garnish, set on a sunny outdoor table."}, {"id": "24", "title": ["Polenta", "Done"], "funFact": ["Polenta is a dish made from boiled cornmeal and can be served as a hot porridge or solidified into a loaf.", "Done"], "question": ["Do you like corn-based dishes?", "Done"], "prompt": "A serving of creamy polenta with a topping of sautéed wild mushrooms and herbs."}, {"id": "25", "title": ["Ravioli", "Done"], "funFact": ["Ravioli are stuffed pasta pillows, traditionally filled with ricotta and spinach, or meat.", "Done"], "question": ["Do you like stuffed pasta?", "Done"], "prompt": "A plate of ravioli with spinach and ricotta filling, topped with marinara sauce and a sprinkle of Parmesan."}, {"id": "26", "title": ["Saltimbocca", "Done"], "funFact": ["Saltimbocca is a Roman dish made with veal, prosciutto, and sage, cooked in white wine and butter.", "Done"], "question": ["Do you enjoy dishes with sage?", "Done"], "prompt": "A serving of saltimbocca with a side of roasted vegetables, on a white plate."}, {"id": "27", "title": ["Panettone", "Done"], "funFact": ["Panettone is a type of sweet bread loaf originally from Milan, usually prepared and enjoyed for Christmas.", "Done"], "question": ["Have you ever tried Panettone?", "Done"], "prompt": "A slice of Panettone with visible dried fruits, served with a cup of hot chocolate."}, {"id": "28", "title": ["Grissini", "Done"], "funFact": ["Grissini are thin, crunchy breadsticks that originated in Turin, traditionally served as an appetizer.", "Done"], "question": ["Do you like crunchy snacks?", "Done"], "prompt": "A jar filled with long, thin Grissini breadsticks, set on a table with a small bowl of dipping sauce."}, {"id": "29", "title": ["Biscotti", "Done"], "funFact": ["Biscotti, also known as cantucci, are almond biscuits that are twice-baked, oblong-shaped, dry, and crunchy.", "Done"], "question": ["Do you like to dip biscotti in coffee?", "Done"], "prompt": "A plate of freshly baked biscotti with almonds, alongside a cup of coffee."}, {"id": "30", "title": ["Panzanella", "Done"], "funFact": ["Panzanella is a Tuscan bread salad made with tomatoes, soaked stale bread, onions, and basil.", "Done"], "question": ["Do you enjoy fresh vegetable salads?", "Done"], "prompt": "A colorful bowl of Panzanella salad with chunks of tomato, cucumber, and soaked bread, garnished with fresh basil."}]
+"""
+
+data = json.loads(data)
+
+for each in data[0:10]:
+    getPathToImage("wrongItalian", each)
+
+
+# clips = []
+# random.shuffle(data)
+# for slide in data:
+#     newClip = ken_burns_effect(f"output/Italian Food!/{slide['id']}.png", duration=21)
+#     newClip = add_caption(newClip, slide["funFact"][0])
+#     clips.append(newClip)
+
+# concat_clip = combine_videos_with_transition(clips,1)
+
+# # Load the background music
+# audio1 = AudioFileClip("resources/itl1.mp3")
+# audio2 = AudioFileClip("resources/itl2.mp3")
+# audio3 = AudioFileClip("resources/itl3.mp3")
+# audio4 = AudioFileClip("resources/itl4.mp3")
+# audio = concatenate_audioclips([audio1, audio2, audio3, audio4])
+
+# # Set the audio duration to match the video duration
+# audio = audio.set_duration(concat_clip.duration)
+
+# # Set the audio to the concatenated video clip
+# concat_clip = concat_clip.set_audio(audio)
+
+# concat_clip.write_videofile("output/italianoAnother.mp4", fps=24)

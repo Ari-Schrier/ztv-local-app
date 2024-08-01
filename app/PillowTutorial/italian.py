@@ -37,31 +37,19 @@ def ken_burns_effect(image_path, duration, zoom_start=1.0, zoom_end=1.4):
     
     return VideoClip(make_frame, duration=duration)
 
-def add_caption(clip, text, max_fontsize=72, font='Arial-Bold', bg_opacity=0.6, margin=10, y_offset=50):
-    # Function to dynamically resize text
-    def get_resized_text_clip(text, clip_width, max_fontsize, font):
-        for fontsize in range(max_fontsize, 10, -2):
-            txt_clip = TextClip(text, fontsize=fontsize, color='white', font=font)
-            if txt_clip.w < (clip_width - 2 * margin):
-                return txt_clip.set_duration(clip.duration)
-        return TextClip(text, fontsize=10, color='white', font=font).set_duration(clip.duration)
+def add_caption(clip, text, fontsize=75, font='Arial', margin=120, y_offset=50):
     
-    # Create the text clip with dynamically adjusted font size
-    txt_clip = get_resized_text_clip(text, clip.w, max_fontsize, font)
-    
-    # Create the background clip
-    txt_bg = ColorClip(size=(txt_clip.w + 2 * margin, txt_clip.h + margin), color=(0, 0, 0)).set_duration(clip.duration)
-    txt_bg = txt_bg.set_opacity(bg_opacity)
+    # Create the text clip with a fixed font size and wrapping
+    txt_clip = TextClip(text, fontsize=fontsize, bg_color='black', color='white', font=font, method='caption', interline=10, size=(clip.w - 2 * margin, None)).set_duration(clip.duration)
     
     # Determine the position for the text and background
     txt_clip = txt_clip.set_position(('center', 'bottom'))
-    txt_bg = txt_bg.set_position(('center', 'bottom'))
+
+    # Make the clip partially transparent
+    txt_clip = txt_clip.set_opacity(.7)
     
-    # Composite the text and background
-    txt_composite = CompositeVideoClip([txt_bg, txt_clip])
-    
-    # Move the composite up by y_offset pixels
-    final_clip = CompositeVideoClip([clip, txt_composite.set_position(('center', clip.h - txt_composite.h - y_offset))])
+    # Move the clip up by y_offset pixels
+    final_clip = CompositeVideoClip([clip, txt_clip.set_position(('center', clip.h - txt_clip.h - y_offset))])
     
     return final_clip
 
@@ -72,17 +60,20 @@ data = """
 data = json.loads(data)
 
 clips = []
+random.shuffle(data)
 for slide in data:
-    newClip = ken_burns_effect(f"output/Italian Food!/{slide['id']}.png", duration=11)
+    newClip = ken_burns_effect(f"output/Italian Food!/{slide['id']}.png", duration=21)
     newClip = add_caption(newClip, slide["funFact"][0])
     clips.append(newClip)
 
 concat_clip = combine_videos_with_transition(clips,1)
 
 # Load the background music
-audio1 = AudioFileClip("resources/italianClassic.mp3")
-audio2 = AudioFileClip("resources/vivaAmore.mp3")
-audio = concatenate_audioclips([audio1, audio2])
+audio1 = AudioFileClip("resources/itl1.mp3")
+audio2 = AudioFileClip("resources/itl2.mp3")
+audio3 = AudioFileClip("resources/itl3.mp3")
+audio4 = AudioFileClip("resources/itl4.mp3")
+audio = concatenate_audioclips([audio1, audio2, audio3, audio4])
 
 # Set the audio duration to match the video duration
 audio = audio.set_duration(concat_clip.duration)
@@ -90,4 +81,4 @@ audio = audio.set_duration(concat_clip.duration)
 # Set the audio to the concatenated video clip
 concat_clip = concat_clip.set_audio(audio)
 
-concat_clip.write_videofile("output/italiano2.mp4", fps=24)
+concat_clip.write_videofile("output/italianoAnother.mp4", fps=24)

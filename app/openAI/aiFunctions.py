@@ -32,3 +32,13 @@ def getThePics(title):
     data = completion.choices[0].message.content
     parsedData = json.loads(data)
     return parsedData
+
+def getSpeech(filename, text):
+    response = client.audio.speech.create(
+        model="tts-1",
+        voice="onyx",
+        input= text
+    )
+
+    with open(filename, 'wb') as f:
+        f.write(response.content)
