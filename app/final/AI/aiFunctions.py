@@ -1,6 +1,7 @@
 from openai import OpenAI
 import os
 import json
+import requests
 from dotenv import load_dotenv, dotenv_values 
 load_dotenv() 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -11,6 +12,7 @@ jsonPreamble = """I'm building a program to present quizzes to viewers. I would 
 
 [
 {
+"id": "a unique ID for this question",
 "question":"A multiple-choice question at about a second-grade difficulty level",
 "A":"A) a potential answer",
 "B":"B) a potential answer",
@@ -48,6 +50,23 @@ def getJson(title):
         each["image_path"] = "resources/default_image.png"
     return parsedData
 
+
+def getPictureURL(title, prompt, id):
+    begging = "I NEED to test how the tool works with extremely simple prompts. DO NOT add any detail, just use it AS-IS:"
+    response = client.images.generate(
+        model="dall-e-3",
+        prompt=f"{begging} {prompt}",
+        n=1,
+        size="1792x1024",
+        style="natural"
+        )
+    image_url = response.data[0].url
+    image_data = requests.get(image_url).content
+    file_location = f"output/{title}/{id}.png"
+    with open(file_location, "wb") as file:
+        file.write(image_data)
+    return file_location
+
 def getThePics(title):
     completion = client.chat.completions.create(
     model="gpt-4o",
@@ -61,10 +80,10 @@ def getThePics(title):
     parsedData = json.loads(data)
     return parsedData
 
-def getSpeech(filename, text):
+def getSpeech(filename, text, voice="echo"):
     response = client.audio.speech.create(
         model="tts-1",
-        voice="echo",
+        voice=voice,
         input= text
     )
 
@@ -88,9 +107,3 @@ def saveJSON(title, questions):
         print(f"File {filename} written successfully.")
     except Exception as e:
         print(f"Error writing file: {e}")
-
-if __name__ == "__main__":
-    with open("output/WhaleQuiz/WhaleQuiz.json", "r") as file:
-        whales = json.load(file)
-    for each in whales:
-        print(each)
