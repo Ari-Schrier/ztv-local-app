@@ -185,7 +185,7 @@ def makeQuizQuestion(title, question):
     except OSError as e:
         print(f"Error loading audio file: {e}")
         audio = None
-    image = ken_burns_effect(f"output/{title}/{question["id"]}_image.png", duration)
+    image = ken_burns_effect(f"output/{title}/{question["id"]}.png", duration)
     if audio:
         audio = audio.set_duration(image.duration)
         image = image.set_audio(audio)
@@ -262,17 +262,17 @@ def preprocess_video(title):
         quiz = json.load(file)
     my_title = makeTitle(title, (1920, 1080))
     title_path = f"output/{title}/title.mp4"
-    my_title.write_videofile(title_path)
+    my_title.write_videofile(title_path, fps=24)
     clips = [title_path]
     for each in quiz:
         getAudioFor(title, each)
         question = makeQuizQuestion(title, each)
-        output_path = f'output/{title}/{title}_partial.mp4'
+        output_path = f'output/{title}/{each["id"]}_partial.mp4'
         question.write_videofile(output_path, fps=24)
         clips.append(output_path)
     return clips
 
 if __name__ == "__main__":
-    making = "x"
+    making = "Squirrels"
     partial = preprocess_video(making)
     finish_quiz(making, partial)
