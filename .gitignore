@@ -2,5 +2,6 @@
 /__pycache__
 /output
 .env
-.mp3
-.mp4
+*.mp3
+*.mp4
+*.pyc
