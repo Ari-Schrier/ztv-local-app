@@ -11,7 +11,7 @@ from AI.aiFunctions import getPictureURL
 from AI.stableFunctions import getPathToImage
 
 class ImageReviewWindow:
-    def __init__(self, root, json_data, title, new=True):
+    def __init__(self, root, json_data, title):
         self.video_title = title
         self.root = root
         self.json_data = json_data
@@ -52,33 +52,6 @@ class ImageReviewWindow:
         # Button for saving the json
         self.save_button = tk.Button(self.toolbar_frame, text="Save", command=self.save)
         self.save_button.pack(side=tk.LEFT, padx=10, pady=10)
-
-        if new:
-            # Load first image
-            self.load_images()
-        else:
-            self.show_image(self.current_index)
-
-    def load_images(self):
-        # Show the loading message
-        self.show_loading_message()
-        self.root.update_idletasks()
-
-        # Start a thread to load images
-        threading.Thread(target=self.load_images_thread).start()
-
-    def load_images_thread(self):
-        # Update image URLs in a separate thread
-        for index, item in enumerate(self.json_data):
-            self.update_image_url(index, item["prompt"])
-
-        # Hide the loading message and show the first image
-        self.root.after(0, self.on_images_loaded)
-
-    def on_images_loaded(self):
-        # Hide the loading message
-        self.loading_label.pack_forget()
-        self.spinner_label.pack_forget()
         self.show_image(self.current_index)
 
 
@@ -146,7 +119,7 @@ class ImageReviewWindow:
         # Placeholder for regenerate image functionality
         new_prompt = self.prompt_text.get("1.0", tk.END).strip()
         self.json_data[self.current_index]["prompt"] = new_prompt
-        self.json_data[self.current_index]["image_path"] = self.getURL(new_prompt, self.current_index + 1)
+        self.json_data[self.current_index]["image_path"] = self.getURL(new_prompt, self.current_index)
         self.show_image(self.current_index)
 
     def save(self):

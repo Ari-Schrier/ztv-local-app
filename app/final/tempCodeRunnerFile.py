@@ -1,11 +1,3 @@
-from imageReviewWindow import ImageReviewWindow
-from AI.aiFunctions import saveJSON
-from AI.stableFunctions import getPathToImage
-import quizMaker
-import slideshowMaker
-import tkinter as tk
-import json
-
 if __name__ == "__main__":
     #getPathToImage("test", "a cat wearing sunglasses", "1", "1:1")
 
@@ -37,23 +29,3 @@ if __name__ == "__main__":
     else:
         partial = slideshowMaker.preprocess_slideshow(title)
     quizMaker.finish_quiz(title, partial)
-
-    # from AI.aiFunctions import getSpeech
-    # names = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
-    # names = ["alloy"]
-    # for each in names:
-    #     line = f"Hello, my name is {each} and I'd like to audition as a reader for Zinnia TV."
-    #     getSpeech(f"output/voiceAudition/{each}.mp3", line, each)
-
-    # from moviepy.editor import AudioFileClip, vfx
-
-    # # Load the audio file
-    # audio = AudioFileClip("output/voiceAudition/echo.mp3")
-    # speeds = [1.0, 0.95, 0.9, 0.85, 0.8, 0.75]
-    # for each in speeds:
-
-    #     # Slow down the audio by a factor (e.g., 2.0 for half speed)
-    #     Gor  # 0.5 means half speed
-
-    #     # Save the new audio file
-    #     slow_audio.write_audiofile(f"output/speeds/echo{each}.mp3")
