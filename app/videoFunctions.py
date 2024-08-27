@@ -3,9 +3,11 @@ from AI.aiFunctions import getSpeech
 import random
 
 VOICE_ACTOR= "echo"
+#All extant voice actors: ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
 
-def getAudioFor(title, question):
-    destination = f"output/{title}/{question['id']}_"
+#Fetches audio via openAI API of the chosen voice actor reading all lines.
+def getAudioFor(video_title, question):
+    destination = f"output/{video_title}/{question['id']}_"
     for each in ["question", "fun fact"]:
         getSpeech(destination+each+".mp3", question[each], VOICE_ACTOR)
     for each in ["A", "B", "C", "D"]:
@@ -13,6 +15,7 @@ def getAudioFor(title, question):
     answer = question["answer"]
     getSpeech(destination+"answer.mp3", f"The answer is {answer}: {question[answer][2:]}.")
 
+#Combines multiple video clips with a crossfade effect
 def combine_videos_with_transition(clips, transition_duration):
     return concatenate_videoclips([
             clip if i == 0 else clip.crossfadein(transition_duration)
@@ -22,6 +25,7 @@ def combine_videos_with_transition(clips, transition_duration):
         method="compose"
     )
 
+#Takes a still image, returns a video slowly zooming into the image
 def ken_burns_effect(image_path, duration, zoom_start=1.0, zoom_end=1.4):
     clip = ImageClip(image_path)
     w, h = clip.size
@@ -48,6 +52,7 @@ def ken_burns_effect(image_path, duration, zoom_start=1.0, zoom_end=1.4):
     
     return VideoClip(make_frame, duration=duration)
 
+#Adds a caption to a clip
 def add_caption(clip, text, fontsize=75, font='Arial', margin=120, y_offset=50):
     
     # Create the text clip with a fixed font size and wrapping
@@ -64,6 +69,7 @@ def add_caption(clip, text, fontsize=75, font='Arial', margin=120, y_offset=50):
     
     return final_clip
 
+#Plops the zinnia watermark on a videoclip
 def addLogo(video):
 
     # Load the watermark image
@@ -85,6 +91,7 @@ def addLogo(video):
 
     return final_video
 
+#Creates the title-clip for a video
 def makeTitle(text, size, duration=8):
     bg = ColorClip(size=size, color=(0, 0, 0), duration=duration)
 
@@ -103,6 +110,7 @@ def makeTitle(text, size, duration=8):
     # Composite the text clip on top of the black screen
     return CompositeVideoClip(clips=[bg, title_text])
 
+#Adds a specified background music to a video at a specified volume level
 def addBGM(video, music, volume):
     bgm = (AudioFileClip(each) for each in music)
     audio = concatenate_audioclips(bgm)
