@@ -1,7 +1,24 @@
 from moviepy.editor import *
 from PIL import Image, ImageFilter, ImageDraw
 
-if __name__ == "__main__":
+BLUR_STRENGTH = 200
+OVERLAY_OPACITY = 40
+SPACE_AROUND_IMAGE = 100
+FONT = "resources/HelveticaNeueMedium.otf"
+QUESTION_SIZE = 72
+ANSWER_SIZE = 54
+LEFT_MARGIN = 85
+
+def combine_videos_with_transition(clips, transition_duration):
+    return concatenate_videoclips([
+            clip if i == 0 else clip.crossfadein(transition_duration)
+            for i, clip in enumerate(clips)
+        ],
+        padding=-transition_duration, 
+        method="compose"
+    )
+
+def makeClip(second=False):
     question = "What do robots do on their day off?"
     option_a = "They recharge by the beach."
     option_b = "They have a 'bit' of fun."
@@ -9,10 +26,8 @@ if __name__ == "__main__":
     option_d = "They watch reruns of The Jetsons."
 
     image_path = "output/testOutput/testbot.png"
-    video_duration = 3  # Duration of the video in seconds
-    output_video_path = 'output/testOutput/firstchunk.mp4'
+    video_duration = 2  # Duration of the video in seconds
     video_width, video_height = 1920, 1080  # 16:9 aspect ratio dimensions
-    image_border = 100
 
     # Load and process the image
     image = Image.open(image_path)
@@ -36,12 +51,12 @@ if __name__ == "__main__":
     # Resize to video dimensions
     image = image.resize((video_width, video_height), Image.LANCZOS)
 
-    # Apply a heavy blur to the image (this will serve as the background)
-    blurred_image = image.filter(ImageFilter.GaussianBlur(radius=20))
-
     # Apply a 20% black opacity scrim
-    overlay = Image.new('RGBA', blurred_image.size, (0, 0, 0, 51))  # 51 is 20% opacity of 255
-    blurred_image_with_scrim = Image.alpha_composite(blurred_image.convert('RGBA'), overlay)
+    overlay = Image.new('RGBA', image.size, (0, 0, 0, 255//BLUR_STRENGTH))  # 102 is 40% opacity of 255
+    image_with_scrim = Image.alpha_composite(image.convert('RGBA'), overlay)
+
+    # Apply a heavy blur to the image (this will serve as the background)
+    blurred_image_with_scrim = image_with_scrim.filter(ImageFilter.GaussianBlur(radius=OVERLAY_OPACITY))
 
     # Save the blurred background temporarily
     blurred_background_path = 'temp_blurred_background.png'
@@ -49,7 +64,7 @@ if __name__ == "__main__":
 
     # Load the original image again for overlay (ensure it's square for rounded edges)
     image = Image.open(image_path)
-    image_size = 1080 - 2*image_border
+    image_size = 1080 - 2*SPACE_AROUND_IMAGE
     image = image.resize((image_size, image_size), Image.LANCZOS)
 
     # Create a mask for rounded corners
@@ -63,7 +78,7 @@ if __name__ == "__main__":
 
     # Position the image on the right-hand side of the video frame
     final_background = Image.open(blurred_background_path)
-    image_position = (video_width - image_with_rounded_corners.width - image_border, image_border)  # Adjust positioning as necessary
+    image_position = (video_width - image_with_rounded_corners.width - SPACE_AROUND_IMAGE, SPACE_AROUND_IMAGE)  # Adjust positioning as necessary
     final_background.paste(image_with_rounded_corners, image_position, image_with_rounded_corners)
 
     # Save the final composed image temporarily
@@ -74,16 +89,17 @@ if __name__ == "__main__":
 
     question_text = TextClip(
         question, 
-        font="resources/HelveticaNeueBold.otf", 
+        font=FONT, 
         method="caption", 
         align="west", 
-        fontsize=80, 
-        color='white', 
+        fontsize=QUESTION_SIZE, 
+        color="white", 
         kerning=5, 
-        size=(1920 - image_size - 2*image_border, None)
-    ).set_pos((image_border, image_border)).set_duration(video_duration)
+        interline=24 * 0.2,
+        size=(1920 - image_size - 2*SPACE_AROUND_IMAGE, None)
+    ).set_pos((LEFT_MARGIN, 207)).set_duration(video_duration)
 
-    new_line = image_border + question_text.size[1] + 30
+    new_line = 207 + question_text.size[1] + 72
 
     clips = [clip, question_text]
 
@@ -92,16 +108,20 @@ if __name__ == "__main__":
     for answer in answers:
         new_text = TextClip(
             answer, 
-            font="resources/HelveticaNeueMedium.otf", 
+            font=FONT, 
             method="caption", 
             align="west", 
-            fontsize=75, 
+            fontsize=ANSWER_SIZE, 
             color='white', 
             kerning=5, 
-            size=(1920 - image_size - 2*image_border, None)
-        ).set_duration(video_duration).set_pos((image_border, new_line))
+            interline=24 * 0.1,
+            size=(1920 - image_size - 2*SPACE_AROUND_IMAGE, None)
+        ).set_duration(video_duration).set_pos((LEFT_MARGIN, new_line))
+
+        if (second and answer==option_a):
+            new_text = new_text.set_opacity(.2)
         
-        new_line += (new_text.size[1] + 25)
+        new_line += (new_text.size[1] + 48)
         clips.append(new_text)
 
     # Set the output video properties
@@ -110,10 +130,18 @@ if __name__ == "__main__":
 
     clip = CompositeVideoClip(clips)
 
+    return clip
+
+if __name__ == "__main__":
+    output_video_path = 'output/testOutput/transitiontest.mp4'
     # Write the final video to a file
+    clip1 = makeClip()
+    clip2 = makeClip(True)
+    clip = combine_videos_with_transition([clip1, clip2], 1)
+
     clip.write_videofile(output_video_path, codec='libx264', fps=24)
 
-    # Cleanup temporary images
-    import os
-    os.remove(blurred_background_path)
-    os.remove(final_image_path)
+    # # Cleanup temporary images
+    # import os
+    # os.remove(blurred_background_path)
+    # os.remove(final_image_path)
