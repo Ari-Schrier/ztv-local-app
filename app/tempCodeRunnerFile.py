@@ -2,12 +2,13 @@ from moviepy.editor import *
 from PIL import Image, ImageFilter, ImageDraw
 
 BLUR_STRENGTH = 200
-OVERLAY_OPACITY = 40
+OVERLAY_OPACITY = 60
 SPACE_AROUND_IMAGE = 100
 FONT = "resources/HelveticaNeueMedium.otf"
 QUESTION_SIZE = 72
 ANSWER_SIZE = 54
 LEFT_MARGIN = 85
+AUDIO_SPEED = .8
 
 def combine_videos_with_transition(clips, transition_duration):
     return concatenate_videoclips([
@@ -18,17 +19,8 @@ def combine_videos_with_transition(clips, transition_duration):
         method="compose"
     )
 
-def makeClip(second=False):
-    question = "What do robots do on their day off?"
-    option_a = "They recharge by the beach."
-    option_b = "They have a 'bit' of fun."
-    option_c = "They go out for a 'byte' to eat."
-    option_d = "They watch reruns of The Jetsons."
-
-    image_path = "output/testOutput/testbot.png"
-    video_duration = 2  # Duration of the video in seconds
+def makeBackground(image_path):
     video_width, video_height = 1920, 1080  # 16:9 aspect ratio dimensions
-
     # Load and process the image
     image = Image.open(image_path)
 
@@ -51,12 +43,13 @@ def makeClip(second=False):
     # Resize to video dimensions
     image = image.resize((video_width, video_height), Image.LANCZOS)
 
-    # Apply a 20% black opacity scrim
-    overlay = Image.new('RGBA', image.size, (0, 0, 0, 255//BLUR_STRENGTH))  # 102 is 40% opacity of 255
+    # Apply a black opacity scrim
+    overlay = int((OVERLAY_OPACITY/100)*255)
+    overlay = Image.new('RGBA', image.size, (0, 0, 0, 255//overlay))
     image_with_scrim = Image.alpha_composite(image.convert('RGBA'), overlay)
 
     # Apply a heavy blur to the image (this will serve as the background)
-    blurred_image_with_scrim = image_with_scrim.filter(ImageFilter.GaussianBlur(radius=OVERLAY_OPACITY))
+    blurred_image_with_scrim = image_with_scrim.filter(ImageFilter.GaussianBlur(radius=BLUR_STRENGTH))
 
     # Save the blurred background temporarily
     blurred_background_path = 'temp_blurred_background.png'
@@ -84,9 +77,34 @@ def makeClip(second=False):
     # Save the final composed image temporarily
     final_image_path = 'output/testOutput/background.png'
     final_background.save(final_image_path)
+    return final_image_path, image_size
 
-    clip = ImageClip(final_image_path, duration=video_duration)
+def makeQuestionClip(bg_path, image_size, question, options, i):
+    choices = ["question", "A", "B", "C", "D", "None"]
+    current_voiceover = choices[i]
+    if current_voiceover != "None":
+        dialogue = AudioFileClip(f"output/testOutput/speech{current_voiceover}.mp3")
+        # dialogue = dialogue.fx(vfx.speedx, factor=AUDIO_SPEED)
+        #dialogue = concatenate_audioclips([AudioFileClip("resources/5-seconds-of-silence.mp3"), dialogue])
+        print("Found dialogue!")
+    else:
+        print("No Dialogue!")
+        dialogue = AudioFileClip("resources/5-seconds-of-silence.mp3")
+        
 
+    #video_duration = max(12, dialogue.duration + 2)  # Duration of the video in seconds
+    video_duration = dialogue.duration
+
+    #dialogue = concatenate_audioclips([dialogue, AudioFileClip("resources/15-seconds-of-silence.mp3")])
+
+    #dialogue = dialogue.subclip(0, video_duration)
+    dialogue.write_audiofile("output/testOutput/pleasework.mp3")
+
+    print(f"Video duration: {video_duration}")
+
+    print(f"Dialogue duration: {dialogue.duration}")
+
+    clip = ImageClip(bg_path, duration=video_duration)
     question_text = TextClip(
         question, 
         font=FONT, 
@@ -94,8 +112,8 @@ def makeClip(second=False):
         align="west", 
         fontsize=QUESTION_SIZE, 
         color="white", 
-        kerning=5, 
-        interline=24 * 0.2,
+        kerning=0, 
+        interline=1.4,
         size=(1920 - image_size - 2*SPACE_AROUND_IMAGE, None)
     ).set_pos((LEFT_MARGIN, 207)).set_duration(video_duration)
 
@@ -103,9 +121,8 @@ def makeClip(second=False):
 
     clips = [clip, question_text]
 
-    answers = [option_a, option_b, option_c, option_d]
-
-    for answer in answers:
+    j = 1
+    for answer in options:
         new_text = TextClip(
             answer, 
             font=FONT, 
@@ -113,33 +130,54 @@ def makeClip(second=False):
             align="west", 
             fontsize=ANSWER_SIZE, 
             color='white', 
-            kerning=5, 
-            interline=24 * 0.1,
+            kerning=0, 
+            interline=1.3,
             size=(1920 - image_size - 2*SPACE_AROUND_IMAGE, None)
         ).set_duration(video_duration).set_pos((LEFT_MARGIN, new_line))
 
-        if (second and answer==option_a):
+        if j == 5:
+            j=0
+
+        if j <= i:
             new_text = new_text.set_opacity(.2)
         
         new_line += (new_text.size[1] + 48)
         clips.append(new_text)
+        j+=1
 
     # Set the output video properties
     clip = clip.set_duration(video_duration)
     clip = clip.set_fps(24)
 
     clip = CompositeVideoClip(clips)
+    clip.audio = dialogue
+
+    clip.write_videofile("output/testOutput/simple_test.mp4", codec='libx264', audio_codec='aac', fps=24)
 
     return clip
 
-if __name__ == "__main__":
-    output_video_path = 'output/testOutput/transitiontest.mp4'
-    # Write the final video to a file
-    clip1 = makeClip()
-    clip2 = makeClip(True)
-    clip = combine_videos_with_transition([clip1, clip2], 1)
 
-    clip.write_videofile(output_video_path, codec='libx264', fps=24)
+def makeClip():
+    question = "What do robots do on their day off?"
+    option_a = "They recharge by the beach."
+    option_b = "They have a 'bit' of fun."
+    option_c = "They go out for a 'byte' to eat."
+    option_d = "They watch reruns of The Jetsons."
+
+    image_path = "output/testOutput/testbot.png"
+    final_image_path, image_size = makeBackground(image_path)
+    output_video_path = 'output/testOutput/audiotest.mp4'
+
+    answers = [option_a, option_b, option_c, option_d]
+    clips =[]
+
+    for i in range(0, 1):
+        clips.append(makeQuestionClip(final_image_path, image_size, question, answers, i))
+    #clip = combine_videos_with_transition(clips, 1.5)
+    #clip.write_videofile(output_video_path, codec='libx264', audio_codec='aac', fps=24)
+
+if __name__ == "__main__":
+    makeClip()
 
     # # Cleanup temporary images
     # import os
