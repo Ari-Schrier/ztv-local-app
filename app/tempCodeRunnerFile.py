@@ -10,6 +10,10 @@ QUESTION_SIZE = 72
 ANSWER_SIZE = 54
 LEFT_MARGIN = 85
 AUDIO_SPEED = .9
+DELAY_BEFORE_SPEECH = 2
+PAUSE_AFTER_SPEECH = 3
+MIN_LENGTH_OF_CLIP = 6
+TIME_BETWEEN_FADE = 4
 
 def combine_videos_with_transition(clips, transition_duration):
     return concatenate_videoclips([
@@ -80,6 +84,61 @@ def makeBackground(image_path):
     final_background.save(final_image_path)
     return final_image_path, image_size
 
+def clipIntroducing(bg_path, image_size, lines, currently_on, dialogue_path=False):
+    """Makes a clip introducing a question or possible answer"""
+    #Build the dialogue out and determine how long the video will be
+    if dialogue_path:
+        dialogue = AudioFileClip(dialogue_path)
+        dialogue = dialogue.fx(vfx.speedx, factor=AUDIO_SPEED)
+        before_speech = AudioFileClip("resources/5-seconds-of-silence.mp3").subclip(0, DELAY_BEFORE_SPEECH)
+        dialogue = concatenate_audioclips([before_speech, dialogue])
+        video_duration = max(dialogue.duration + PAUSE_AFTER_SPEECH, MIN_LENGTH_OF_CLIP)
+        dialogue = concatenate_audioclips([dialogue, AudioFileClip("resources/15-seconds-of-silence.mp3")]).subclip(0, video_duration)
+    else:
+        dialogue = AudioFileClip("resources/15-seconds-of-silence.mp3").subclip(0, MIN_LENGTH_OF_CLIP)
+        video_duration = MIN_LENGTH_OF_CLIP
+    
+    bg = ImageClip(bg_path, duration=video_duration)
+    question_text = TextClip(
+        lines[0], 
+        font=FONT, 
+        method="caption", 
+        align="west", 
+        fontsize=QUESTION_SIZE, 
+        color="white", 
+        kerning=0, 
+        interline=1.4,
+        size=(1920 - image_size - 2*SPACE_AROUND_IMAGE, None)
+    ).set_pos((LEFT_MARGIN, 207)).set_duration(video_duration)
+
+    new_line = 207 + question_text.size[1] + 72
+
+    clips = [bg, question_text]
+
+    i = 1
+    while i <= currently_on:
+        new_text = TextClip(
+            lines[i], 
+            font=FONT, 
+            method="caption", 
+            align="west", 
+            fontsize=ANSWER_SIZE, 
+            color='white', 
+            kerning=0, 
+            interline=1.3,
+            size=(1920 - image_size - 2*SPACE_AROUND_IMAGE, None)
+        ).set_duration(video_duration).set_pos((LEFT_MARGIN, new_line))
+        
+        new_line += (new_text.size[1] + 48)
+        clips.append(new_text)
+        i+=1
+
+    clip = CompositeVideoClip(clips)
+    clip.audio = dialogue
+
+    return clip
+
+
 def makeQuestionClip(bg_path, image_size, question, options, i):
     choices = ["question", "A", "B", "C", "D", "None"]
     current_voiceover = choices[i]
@@ -99,10 +158,6 @@ def makeQuestionClip(bg_path, image_size, question, options, i):
 
     dialogue = dialogue.subclip(0, video_duration)
     dialogue.write_audiofile("output/testOutput/pleasework.mp3")
-
-    print(f"Video duration: {video_duration}")
-
-    print(f"Dialogue duration: {dialogue.duration}")
 
     clip = ImageClip(bg_path, duration=video_duration)
     question_text = TextClip(
@@ -154,26 +209,80 @@ def makeQuestionClip(bg_path, image_size, question, options, i):
 
     return clip
 
+def fadeIncorrect(bg_path, image_size, lines, faded):
+    video_duration = TIME_BETWEEN_FADE
+    bg = ImageClip(bg_path, duration=video_duration)
+    question_text = TextClip(
+        lines[0], 
+        font=FONT, 
+        method="caption", 
+        align="west", 
+        fontsize=QUESTION_SIZE, 
+        color="white", 
+        kerning=0, 
+        interline=1.4,
+        size=(1920 - image_size - 2*SPACE_AROUND_IMAGE, None)
+    ).set_pos((LEFT_MARGIN, 207)).set_duration(video_duration)
+
+    new_line = 207 + question_text.size[1] + 72
+
+    clips = [bg, question_text]
+
+    i = 1
+    while i <= 4:
+        
+        new_text = TextClip(
+            lines[i], 
+            font=FONT, 
+            method="caption", 
+            align="west", 
+            fontsize=ANSWER_SIZE, 
+            color='white', 
+            kerning=0, 
+            interline=1.3,
+            size=(1920 - image_size - 2*SPACE_AROUND_IMAGE, None)
+        ).set_duration(video_duration).set_pos((LEFT_MARGIN, new_line))
+        print(f"Is {i} in {faded}?")
+        if i in faded:
+            print("Trying to fade!")
+            new_text = new_text.set_opacity(.2)
+        
+        new_line += (new_text.size[1] + 48)
+        clips.append(new_text)
+        i+=1
+
+    clip = CompositeVideoClip(clips)
+
+    return clip
+
 
 def makeClip():
     question = "What do robots do on their day off?"
-    option_a = "They recharge by the beach."
-    option_b = "They have a 'bit' of fun."
-    option_c = "They go out for a 'byte' to eat."
-    option_d = "They watch reruns of The Jetsons."
+    option_a = "A: They recharge by the beach."
+    option_b = "B: They have a 'bit' of fun."
+    option_c = "C: They go out for a 'byte' to eat."
+    option_d = "D: They watch reruns of The Jetsons."
 
     image_path = "output/testOutput/testbot.png"
     final_image_path, image_size = makeBackground(image_path)
-    output_video_path = 'output/testOutput/audiotest2.mp4'
+    output_video_path = 'output/testOutput/fadetest.mp4'
+    dialogue_paths = [f"output/testOutput/speech{each}.mp3" for each in ["question", "A", "B", "C", "D"]]
 
-    answers = [option_a, option_b, option_c, option_d]
+    answers = [question, option_a, option_b, option_c, option_d]
     clips =[]
+    incorrect = [3,1,4]
 
-    for i in range(0, 6):
-        clips.append(makeQuestionClip(final_image_path, image_size, question, answers, i))
+    for i in range(0, 5):
+        clips.append(clipIntroducing(final_image_path, image_size, answers, i, dialogue_paths[i]))
+    for i in range(1, 4):
+        clips.append(fadeIncorrect(final_image_path, image_size, answers, incorrect[0:i]))
+        print(incorrect)
+    answer_clip = fadeIncorrect(final_image_path, image_size, answers, incorrect)
+    answer_clip = answer_clip.set_audio(AudioFileClip("output/testoutput/speechanswer.mp3").set_duration(answer_clip.duration))
+    clips.append(answer_clip)
     clip = combine_videos_with_transition(clips, 1.5)
     clip = addLogo(clip)
-    clip.write_videofile(output_video_path, fps=24)
+    clip.write_videofile(output_video_path, fps=24, threads=8)
 
 if __name__ == "__main__":
     makeClip()

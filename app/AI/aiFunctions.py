@@ -18,7 +18,7 @@ quizPreamble = """I'm building a program to present quizzes to viewers. I would 
 "B":"B) a potential answer",
 "C":"C) a potential answer",
 "D":"D) a potential answer",
-"answer":"A, B, C, or D",
+"answer":1, 2, 3, or 4 to correspond with A, B, C, or D. This should be an integer, not a string.,
 "fun fact":"A short piece of trivia about the subject of the question"
 "prompt":"Give a brief description which could be used with an AI image-generation model to generate a photograph illustrating the fun fact. 
 The prompt should be very simple-- simply state the subject, the background, and what the subject is doing.
