@@ -1,5 +1,6 @@
 from moviepy.editor import *
 from PIL import Image, ImageFilter, ImageDraw
+from videoFunctions import addLogo
 
 BLUR_STRENGTH = 200
 OVERLAY_OPACITY = 60
@@ -8,7 +9,7 @@ FONT = "resources/HelveticaNeueMedium.otf"
 QUESTION_SIZE = 72
 ANSWER_SIZE = 54
 LEFT_MARGIN = 85
-AUDIO_SPEED = .8
+AUDIO_SPEED = .9
 
 def combine_videos_with_transition(clips, transition_duration):
     return concatenate_videoclips([
@@ -84,7 +85,7 @@ def makeQuestionClip(bg_path, image_size, question, options, i):
     current_voiceover = choices[i]
     if current_voiceover != "None":
         dialogue = AudioFileClip(f"output/testOutput/speech{current_voiceover}.mp3")
-        # dialogue = dialogue.fx(vfx.speedx, factor=AUDIO_SPEED)
+        dialogue = dialogue.fx(vfx.speedx, factor=AUDIO_SPEED)
         #dialogue = concatenate_audioclips([AudioFileClip("resources/5-seconds-of-silence.mp3"), dialogue])
         print("Found dialogue!")
     else:
@@ -92,12 +93,11 @@ def makeQuestionClip(bg_path, image_size, question, options, i):
         dialogue = AudioFileClip("resources/5-seconds-of-silence.mp3")
         
 
-    #video_duration = max(12, dialogue.duration + 2)  # Duration of the video in seconds
-    video_duration = dialogue.duration
+    video_duration = max(5, dialogue.duration + 2)  # Duration of the video in seconds
 
-    #dialogue = concatenate_audioclips([dialogue, AudioFileClip("resources/15-seconds-of-silence.mp3")])
+    dialogue = concatenate_audioclips([dialogue, AudioFileClip("resources/15-seconds-of-silence.mp3")])
 
-    #dialogue = dialogue.subclip(0, video_duration)
+    dialogue = dialogue.subclip(0, video_duration)
     dialogue.write_audiofile("output/testOutput/pleasework.mp3")
 
     print(f"Video duration: {video_duration}")
@@ -152,8 +152,6 @@ def makeQuestionClip(bg_path, image_size, question, options, i):
     clip = CompositeVideoClip(clips)
     clip.audio = dialogue
 
-    clip.write_videofile("output/testOutput/simple_test.mp4", codec='libx264', audio_codec='aac', fps=24)
-
     return clip
 
 
@@ -166,15 +164,16 @@ def makeClip():
 
     image_path = "output/testOutput/testbot.png"
     final_image_path, image_size = makeBackground(image_path)
-    output_video_path = 'output/testOutput/audiotest.mp4'
+    output_video_path = 'output/testOutput/audiotest2.mp4'
 
     answers = [option_a, option_b, option_c, option_d]
     clips =[]
 
-    for i in range(0, 1):
+    for i in range(0, 6):
         clips.append(makeQuestionClip(final_image_path, image_size, question, answers, i))
-    #clip = combine_videos_with_transition(clips, 1.5)
-    #clip.write_videofile(output_video_path, codec='libx264', audio_codec='aac', fps=24)
+    clip = combine_videos_with_transition(clips, 1.5)
+    clip = addLogo(clip)
+    clip.write_videofile(output_video_path, fps=24)
 
 if __name__ == "__main__":
     makeClip()
