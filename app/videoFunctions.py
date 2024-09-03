@@ -12,7 +12,7 @@ def getAudioFor(video_title, question):
         getSpeech(destination+each+".mp3", question[each], VOICE_ACTOR)
     for each in ["A", "B", "C", "D"]:
         getSpeech(destination+each+".mp3", question[each][2:] +"?", VOICE_ACTOR)
-    answer = question["answer"]
+    answer = ["A", "B", "C", "D"][question["answer"]-1]
     getSpeech(destination+"answer.mp3", f"The answer is {answer}: {question[answer][2:]}.")
 
 #Combines multiple video clips with a crossfade effect

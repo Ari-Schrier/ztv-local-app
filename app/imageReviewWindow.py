@@ -63,7 +63,7 @@ class ImageReviewWindow:
     def getURL(self, prompt, index):
         # Simulate a function that gets an image URL based on a prompt
         # Replace with the actual implementation of your function
-        return getPathToImage(self.video_title, prompt, index)
+        return getPathToImage(self.video_title, prompt, index, "1:1")
 
     def show_image(self, index):
         image_path = self.json_data[index]["image_path"]

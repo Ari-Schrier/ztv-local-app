@@ -26,7 +26,7 @@ if __name__ == "__main__":
     for i in range(0, len(json_data)):
         json_data[i]["id"] = i
         print(f"Processing image {i+1}/{len(json_data)} (This will take a bit)")
-        path = getPathToImage(title, json_data[i]["prompt"], i)
+        path = getPathToImage(title, json_data[i]["prompt"], i, ratio = "1:1" if type=="QUIZ" else "16:9")
         json_data[i]["image_path"] = path
         print("Processed!")
     root = tk.Tk()
