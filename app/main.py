@@ -37,6 +37,8 @@ if __name__ == "__main__":
     else:
         partial = slideshowMaker.preprocess_slideshow(title)
     quizMaker.finish_quiz(title, partial)
+    import os
+    os.system("shutdown /s /t 1")
 
     # from AI.aiFunctions import getSpeech
     # names = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]

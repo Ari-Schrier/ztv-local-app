@@ -14,16 +14,16 @@ quizPreamble = """I'm building a program to present quizzes to viewers. I would 
 {
 "id": "a unique ID for this question",
 "question":"A multiple-choice question at about a second-grade difficulty level",
-"A":"A) a potential answer",
-"B":"B) a potential answer",
-"C":"C) a potential answer",
-"D":"D) a potential answer",
+"A":"a potential answer",
+"B":"a potential answer",
+"C":"a potential answer",
+"D":"a potential answer",
 "answer":1, 2, 3, or 4 to correspond with A, B, C, or D. This should be an integer, not a string.,
+"answer_statement": A sentence or two which gives the answer to the viewer in the context of the question.",
 "fun fact":"A short piece of trivia about the subject of the question"
 "prompt":"Give a brief description which could be used with an AI image-generation model to generate a photograph illustrating the fun fact. 
 The prompt should be very simple-- simply state the subject, the background, and what the subject is doing.
-Do not include any text, and be very specific with the number of objects present in the photograph.
-Also include mention of the type of camera used to take the photograph, and what sort of lens was used with it."
+Do not include any text, and be very specific with the number of objects present in the photograph."
 },
 {REPEAT FOR ALL QUESTIONS}
 ]
@@ -112,6 +112,8 @@ def getSpeech(filename, text, voice="echo"):
 def saveJSON(title, questions, type):
     # Generate the JSON data
     myJson = getJson(f"Please generate the JSON for a quiz called {title} with {questions.lower()} questions.", type)
+
+    print(myJson)
 
     # Define the filename and the directory
     filename = f"output/{title}/{title}.json"

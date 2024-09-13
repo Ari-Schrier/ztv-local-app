@@ -238,7 +238,7 @@ def finish_quiz(title, clipLocations):
     try:
         # Process the quiz questions
         questions = [VideoFileClip(each) for each in clipLocations]
-
+        
         # Combine questions with transitions
         my_clip = combine_videos_with_transition(questions, 1)
     except Exception as e:
@@ -271,17 +271,21 @@ def finish_quiz(title, clipLocations):
 def preprocess_quiz(title):
         with open(f"output/{title}/{title}.json", "r") as file:
             quiz = json.load(file)
-        my_title = makeTitle(title, (1920, 1080))
+        #my_title = makeTitle(title, (1920, 1080))
         title_path = f"output/{title}/title.mp4"
-        my_title.write_videofile(title_path, fps=24, threads=8)
+        #my_title.write_videofile(title_path, fps=24, threads=8)
         clips = [title_path]
+        for each in range(0, 12):
+            clips.append(f'output/{title}/{each}_partial.mp4')
         music = 0
-        for each in quiz[11:]:
+        print(clips)
+        for each in quiz[12:]:
             getAudioFor(title, each)
             question, music= makeClip(title, each, music)
             output_path = f'output/{title}/{each["id"]}_partial.mp4'
             question.write_videofile(output_path, fps=24, threads=8)
             clips.append(output_path)
+            print(f"I've processed {each['id']}!")
         return clips
 
     
@@ -292,7 +296,28 @@ if __name__ == "__main__":
     # os.remove(blurred_background_path)
     # os.remove(final_image_path)
 
-    making = "The History of Beer"
-    #partial = preprocess_quiz(making)
-    partial = ["output/The History of Beer/title.mp4"] + [f"output/The History of Beer/{each}_partial.mp4" for each in range (0, 30)]
+    print("running!")
+
+    making = "All About Dogs"
+    partial = preprocess_quiz(making)
     finish_quiz(making, partial)
+    import os
+    os.system("shutdown /s /t 1")
+
+    # from AI.stableFunctions import getPathToImage
+    # title="Fishing in Alaska"
+    # with open(f"output/{title}/{title}.json", "r") as file:
+    #     json_data = json.load(file)
+    # for i in [23]:
+    #     json_data[i]["id"] = i
+    #     print(f"Processing image {i+1}/{len(json_data)} (This will take a bit)")
+    #     path = getPathToImage(title, json_data[i]["prompt"], i, ratio = "1:1")
+    #     json_data[i]["image_path"] = path
+    #     print("Processed!")
+
+
+    # for i in range(0, 30):
+    #     json_data[i]["id"] = i
+    #     json_data[i]["image_path"] = f"output/{title}/{i}.png"
+    # with open(f"output/{title}/{title}.json", "w") as file:
+    #     json.dump(json_data, file, indent=4)
