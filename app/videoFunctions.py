@@ -2,19 +2,19 @@ from moviepy.editor import *
 from AI.aiFunctions import getSpeech
 import random
 
-VOICE_ACTOR= "echo"
+VOICE_ACTOR= "shimmer"
 #All extant voice actors: ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
 
 #Fetches audio via openAI API of the chosen voice actor reading all lines.
 def getAudioFor(video_title, question):
     destination = f"output/{video_title}/{question['id']}_"
-    for each in ["question", "fun fact"]:
+    for each in ["question", "fun_fact", "answer_statement"]:
         getSpeech(destination+each+".mp3", question[each], VOICE_ACTOR)
-    for each in ["A", "B", "C", "D"]:
-        getSpeech(destination+each+".mp3", question[each][2:] +"?", VOICE_ACTOR)
-    answer = ["A", "B", "C", "D"][question["answer"]-1]
-    getSpeech(destination+"answer.mp3", f"The answer is {answer}: {question[answer][2:]}.")
-
+    getSpeech(destination + "A.mp3", "Is the answer " + question["A"] +"?", VOICE_ACTOR)
+    for each in ["B", "C"]:
+        getSpeech(destination+each+".mp3", "Is it " + question[each] +"?", VOICE_ACTOR)
+    getSpeech(destination + "D.mp3", "Or is it " + question["D"] +"?", VOICE_ACTOR)
+    
 #Combines multiple video clips with a crossfade effect
 def combine_videos_with_transition(clips, transition_duration):
     return concatenate_videoclips([
@@ -96,8 +96,8 @@ def makeTitle(text, size, duration=8):
     bg = ColorClip(size=size, color=(0, 0, 0), duration=duration)
 
     # Create a text clip with the desired caption, specify the width for wrapping
-    caption = text
-    title_text = TextClip(caption, font="resources/HelveticaNeueBold.otf", method="caption", align="west", fontsize=160, color='white', size=(size[0] - 800, None))
+    caption = text.lower()
+    title_text = TextClip(caption, font="resources/HelveticaNeueBold.otf", method="caption", align="west", fontsize=160, color='white', size=(size[0] - 800, None), interline=0.2*160)
     title_text = title_text.set_duration(duration)
 
     # Calculate the position: centered on y-axis and 150 pixels from the left edge
