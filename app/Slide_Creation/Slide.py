@@ -1,4 +1,5 @@
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
+import numpy as np
 
 BLUR_STRENGTH = 200
 OVERLAY_OPACITY = 60
@@ -19,7 +20,7 @@ BGM_VOLUME = .2
 VIDEO_WIDTH=1920
 VIDEO_HEIGHT=1080
 
-def process_image(image_path):
+def process_background(image_path):
     with Image.open(image_path) as image:
         image_ratio = image.width / image.height
         target_ratio = VIDEO_WIDTH / VIDEO_HEIGHT
@@ -42,7 +43,7 @@ def process_image(image_path):
         image_with_scrim = Image.alpha_composite(resized_image.convert('RGBA'), overlay)
 
         # Apply a heavy blur to the image (this will serve as the background)
-        blurred_image_with_scrim = image_with_scrim.filter(ImageFilter.GaussianBlur(radius=BLUR_STRENGTH))
+        final_background = image_with_scrim.filter(ImageFilter.GaussianBlur(radius=BLUR_STRENGTH))
 
         # Ensure image is square with rounded edges
         image_size = 1080 - 2*SPACE_AROUND_IMAGE
@@ -59,7 +60,7 @@ def process_image(image_path):
 
         # Position the image on the right-hand side of the video frame
         image_position = (VIDEO_WIDTH - image_with_rounded_corners.width - SPACE_AROUND_IMAGE, SPACE_AROUND_IMAGE)  # Adjust positioning as necessary
-        final_background = blurred_image_with_scrim.paste(image_with_rounded_corners, image_position, image_with_rounded_corners)
+        final_background.paste(image_with_rounded_corners, image_position, image_with_rounded_corners)
 
         # Save the final composed image temporarily
         final_image_path = 'output/tmp/background.png'
@@ -80,4 +81,4 @@ myslide = {
         "image_path": "output/Fishing in Alaska/2.png"
 }
 
-process_image(myslide["image_path"])
+process_background(myslide["image_path"])
