@@ -23,7 +23,7 @@ def get_wrapped_text(draw, text, font, max_width):
     lines.append(' '.join(current_line))
     return lines
 
-def fit_text_to_box(draw, text, max_width, max_height, font_path, initial_font_size):
+def fit_text_to_box(draw, text, max_width, max_height, font_path, initial_font_size, interline_factor):
     """Fit text within a given width and height by reducing font size if needed."""
     font_size = initial_font_size
     font = ImageFont.truetype(font_path, font_size)
@@ -32,9 +32,12 @@ def fit_text_to_box(draw, text, max_width, max_height, font_path, initial_font_s
         # Get the wrapped lines with the current font size
         lines = get_wrapped_text(draw, text, font, max_width)
         
-        # Calculate total height for the wrapped lines
-        line_height = font.getbbox('A')[3]  # Height of a single line of text (using getbbox)
-        total_text_height = len(lines) * line_height
+        # Calculate the bounding box for multiple characters to get accurate line height
+        bbox = draw.textbbox((0, 0), "Aygpq", font=font)  # Get bounding box of example characters
+        line_height = bbox[3] - bbox[1]  # Calculate height from top to bottom of bounding box
+        adjusted_line_height = line_height * interline_factor  # Adjust with interline_factor
+
+        total_text_height = len(lines) * adjusted_line_height
 
         if total_text_height <= max_height:
             # If the total height fits, we are done
@@ -44,35 +47,27 @@ def fit_text_to_box(draw, text, max_width, max_height, font_path, initial_font_s
             font_size -= 2
             font = ImageFont.truetype(font_path, font_size)
 
-def create_text_image(text, max_width, max_height, font_path, initial_font_size):
-    """Create an image with the text fitted to the specified width and height."""
+def create_text_image(background, text, font_path, initial_font_size, interline_factor, max_width, max_height, left_margin, y_position):
+    """Replicate the behavior of MoviePy's TextClip using PIL with proper line height and text wrapping."""
     # Create a blank image with a large enough size
-    img = Image.new('RGB', (1920, 1080), color=(0, 0, 0))  # Adjust size and background color
+    img = Image.open(background)  # Adjust size and background color
     draw = ImageDraw.Draw(img)
     
     # Fit the text to the box, reducing font size if needed
-    lines, final_font_size = fit_text_to_box(draw, text, max_width, max_height, font_path, initial_font_size)
+    lines, final_font_size = fit_text_to_box(draw, text, max_width, max_height, font_path, initial_font_size, interline_factor)
     font = ImageFont.truetype(font_path, final_font_size)
     
-    # Calculate the starting position (center the text vertically)
-    total_text_height = len(lines) * font.getbbox('A')[3]
-    y_start = (max_height - total_text_height) // 2 + 207  # Adjust starting Y position as needed
-    
-    # Draw each line of text on the image
-    y_pos = y_start
+    # Calculate the bounding box for line height
+    bbox = draw.textbbox((0, 0), "Aygpq", font=font)
+    line_height = bbox[3] - bbox[1]
+    adjusted_line_height = line_height * interline_factor
+
+    # Draw each line of text with adjusted line height
+    y_pos = y_position
     for line in lines:
-        draw.text((50, y_pos), line, font=font, fill="white")  # Adjust the x position as needed
-        y_pos += font.getbbox(line)[3]  # Move to the next line
+        draw.text((left_margin, y_pos), line, font=font, fill="white")  # Draw text line
+        y_pos += adjusted_line_height  # Move to the next line with the adjusted line height
 
-    # Save or show the resulting image
-    img.save("fitted_text_image.png")
+    # Save or display the image
+    img.save("question_with_correct_line_height.png")
     img.show()
-
-# Example usage
-text = "Your long question text that might need to be split into multiple lines goes here."
-font_path = "arial.ttf"  # Path to the font file
-initial_font_size = 45
-max_width = 1000  # Maximum width allowed for the text block
-max_height = 300  # Maximum height allowed for the text block
-
-create_text_image(text, max_width, max_height, font_path, initial_font_size)
