@@ -1,80 +1,78 @@
-import freetype
-import uharfbuzz as hb
-import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
-# Load a font using FreeType
-def load_font(font_path, font_size):
-    face = freetype.Face(font_path)
-    face.set_char_size(font_size * 64)
-    return face
-
-# Shape text using Harfbuzz
-def shape_text(face, text):
-    hb_font = hb.Font(face)
-    buf = hb.Buffer()
-    buf.add_str(text)
-    buf.guess_segment_properties()
+def get_wrapped_text(draw, text, font, max_width):
+    """Wrap text based on the max width allowed."""
+    lines = []
+    words = text.split()  # Split the text into words
+    current_line = []
     
-    # Shape the text (apply kerning, ligatures, etc.)
-    hb.shape(hb_font, buf)
+    for word in words:
+        # Test if the current line with the new word fits within the width
+        test_line = ' '.join(current_line + [word])
+        bbox = draw.textbbox((0, 0), test_line, font=font)  # Get bounding box of the text
+        width = bbox[2] - bbox[0]  # Calculate the width of the text
+
+        if width <= max_width:
+            current_line.append(word)
+        else:
+            # If not, finalize the current line and start a new one
+            lines.append(' '.join(current_line))
+            current_line = [word]
     
-    # Extract glyph information (positions, advances, etc.)
-    positions = buf.glyph_positions
-    infos = buf.glyph_infos
+    # Add the last line
+    lines.append(' '.join(current_line))
+    return lines
+
+def fit_text_to_box(draw, text, max_width, max_height, font_path, initial_font_size):
+    """Fit text within a given width and height by reducing font size if needed."""
+    font_size = initial_font_size
+    font = ImageFont.truetype(font_path, font_size)
     
-    return positions, infos
-
-# Render shaped text using Pillow
-def render_text(face, positions, infos, output_image_path, font_size=24):
-    # Create a blank image to draw on
-    image = Image.new('RGBA', (800, 300), (255, 255, 255, 255))
-    draw = ImageDraw.Draw(image)
-
-    x, y = 50, 100  # Starting position for text
-
-    # Loop through each glyph and render it with kerning and positioning
-    for pos, info in zip(positions, infos):
-        # Load the glyph
-        glyph_index = info.codepoint
-        face.load_glyph(glyph_index)
-        glyph = face.glyph
-
-        # Get glyph bitmap
-        bitmap = glyph.bitmap
-        width, rows = bitmap.width, bitmap.rows
-        bitmap_data = np.array(bitmap.buffer).reshape(rows, width)
-        glyph_image = Image.fromarray(np.uint8(bitmap_data * 255), mode='L')
-
-        # Render the glyph at the correct position
-        glyph_x = x + pos.x_offset / 64  # Convert from FreeType 1/64th pixels
-        glyph_y = y - pos.y_offset / 64  # Adjust vertical offset
+    while True:
+        # Get the wrapped lines with the current font size
+        lines = get_wrapped_text(draw, text, font, max_width)
         
-        # Paste the glyph into the main image
-        image.paste(glyph_image, (int(glyph_x), int(glyph_y - rows)), glyph_image)
-        
-        # Advance the pen position (kerning applied automatically by Harfbuzz)
-        x += pos.x_advance / 64
-        y += pos.y_advance / 64
+        # Calculate total height for the wrapped lines
+        line_height = font.getbbox('A')[3]  # Height of a single line of text (using getbbox)
+        total_text_height = len(lines) * line_height
 
-    # Save the final image
-    image.save(output_image_path)
+        if total_text_height <= max_height:
+            # If the total height fits, we are done
+            return lines, font_size
+        else:
+            # Reduce font size and try again
+            font_size -= 2
+            font = ImageFont.truetype(font_path, font_size)
 
-# Main function to load font, shape text, and render the result
-def main():
-    font_path = "path/to/your/font.ttf"  # Path to your TTF font
-    text = "Hello, world!"  # Text to shape and render
-    font_size = 24  # Font size
+def create_text_image(text, max_width, max_height, font_path, initial_font_size):
+    """Create an image with the text fitted to the specified width and height."""
+    # Create a blank image with a large enough size
+    img = Image.new('RGB', (1920, 1080), color=(0, 0, 0))  # Adjust size and background color
+    draw = ImageDraw.Draw(img)
+    
+    # Fit the text to the box, reducing font size if needed
+    lines, final_font_size = fit_text_to_box(draw, text, max_width, max_height, font_path, initial_font_size)
+    font = ImageFont.truetype(font_path, final_font_size)
+    
+    # Calculate the starting position (center the text vertically)
+    total_text_height = len(lines) * font.getbbox('A')[3]
+    y_start = (max_height - total_text_height) // 2 + 207  # Adjust starting Y position as needed
+    
+    # Draw each line of text on the image
+    y_pos = y_start
+    for line in lines:
+        draw.text((50, y_pos), line, font=font, fill="white")  # Adjust the x position as needed
+        y_pos += font.getbbox(line)[3]  # Move to the next line
 
-    # Load the font with FreeType
-    face = load_font(font_path, font_size)
+    # Save or show the resulting image
+    img.save("fitted_text_image.png")
+    img.show()
 
-    # Shape the text with Harfbuzz (apply kerning, ligatures, etc.)
-    positions, infos = shape_text(face, text)
+# Example usage
+text = "Your long question text that might need to be split into multiple lines goes here."
+font_path = "arial.ttf"  # Path to the font file
+initial_font_size = 45
+max_width = 1000  # Maximum width allowed for the text block
+max_height = 300  # Maximum height allowed for the text block
 
-    # Render the text and save it as an image
-    render_text(face, positions, infos, "output_image_with_harfbuzz.png", font_size)
-
-# Run the program
-if __name__ == "__main__":
-    main()
+create_text_image(text, max_width, max_height, font_path, initial_font_size)
