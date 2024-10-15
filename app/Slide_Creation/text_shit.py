@@ -33,8 +33,8 @@ def fit_text_to_box(draw, text, max_width, max_height, font_path, initial_font_s
         lines = get_wrapped_text(draw, text, font, max_width)
         
         # Calculate the bounding box for multiple characters to get accurate line height
-        bbox = draw.textbbox((0, 0), "Aygpq", font=font)  # Get bounding box of example characters
-        line_height = bbox[3] - bbox[1]  # Calculate height from top to bottom of bounding box
+        ascent, descent = font.getmetrics()
+        line_height = ascent + descent
         adjusted_line_height = line_height * interline_factor  # Adjust with interline_factor
 
         total_text_height = len(lines) * adjusted_line_height
@@ -58,8 +58,8 @@ def create_text_image(background, text, font_path, initial_font_size, interline_
     font = ImageFont.truetype(font_path, final_font_size)
     
     # Calculate the bounding box for line height
-    bbox = draw.textbbox((0, 0), "Aygpq", font=font)
-    line_height = bbox[3] - bbox[1]
+    ascent, descent = font.getmetrics()
+    line_height = ascent + descent
     adjusted_line_height = line_height * interline_factor
 
     # Draw each line of text with adjusted line height
@@ -69,5 +69,4 @@ def create_text_image(background, text, font_path, initial_font_size, interline_
         y_pos += adjusted_line_height  # Move to the next line with the adjusted line height
 
     # Save or display the image
-    img.save("question_with_correct_line_height.png")
-    img.show()
+    return img, y_pos
