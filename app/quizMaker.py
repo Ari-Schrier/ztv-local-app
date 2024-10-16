@@ -1,5 +1,7 @@
 from moviepy.editor import *
 from moviepy.audio.fx.all import audio_fadein, audio_fadeout
+from Slide_Creation.Slide import Slide
+from Slide_Creation.text_shit import make_title_page
 from PIL import Image, ImageFilter, ImageDraw
 from AI.aiFunctions import getSpeech
 import json
@@ -23,76 +25,65 @@ TIME_BETWEEN_FADE = 6
 #Testing at 8, 6, and 4
 BGM_VOLUME = .2
 
+import subprocess
+
+def ffmpeg_crossfade(clips, output_filename, crossfade_duration=1):
+    """
+    Apply crossfades between a list of video clips using FFmpeg.
+    
+    Parameters:
+    clips (list): List of file paths to the video clips.
+    output_filename (str): The output video file path.
+    crossfade_duration (int): Duration of the crossfade in seconds.
+    """
+    filter_complex = ""
+    inputs = []
+    last_input = None
+
+    for i, clip in enumerate(clips):
+        inputs.append(f"-i {clip}")
+        if last_input is None:
+            last_input = f"[{i}:v][{i}:a]"
+        else:
+            filter_complex += f"[{i-1}:v][{i}:v]xfade=transition=fade:duration={crossfade_duration}:offset={i-1}[v{i}];"
+            filter_complex += f"[{i-1}:a][{i}:a]acrossfade=d={crossfade_duration}[a{i}];"
+            last_input = f"[v{i}][a{i}]"
+    
+    # Construct the full FFmpeg command
+    command = f"ffmpeg {' '.join(inputs)} -filter_complex \"{filter_complex}\" -map \"{last_input}\" {output_filename}"
+
+    # Call FFmpeg
+    subprocess.run(command, shell=True)
+
 def combine_videos_with_transition(clips, transition_duration):
     return concatenate_videoclips([
             clip if i == 0 else clip.crossfadein(transition_duration)
             for i, clip in enumerate(clips)
         ],
         padding=-transition_duration, 
-        method="chain"
+        method="compose"
     )
 
-def makeBackground(image_path):
-    video_width, video_height = 1920, 1080  # 16:9 aspect ratio dimensions
-    # Load and process the image
-    image = Image.open(image_path)
+def combine_into(clips, filename, transition):
+    temps = make_temp_files(clips)
+    ffmpeg_crossfade(temps, filename, transition)
+    clean_up_temps(temps)
 
-    # Calculate the aspect ratios
-    image_ratio = image.width / image.height
-    target_ratio = video_width / video_height
+def make_temp_files(clips):
+    import os
+    import tempfile
+    temp_files = []
+    for i, clip in enumerate(clips):
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+        clip.write_videofile(temp_file, fps=24, codec='libx264')
+        temp_files.append(temp_file)
+    return temp_files
+def clean_up_temps(file_paths):
+    import os
+    for file_path in file_paths:
+        os.remove(file_path)
 
-    # Crop and zoom the image to fill 16:9 frame
-    if image_ratio > target_ratio:
-        # Image is wider than 16:9, crop the width
-        new_width = int(image.height * target_ratio)
-        offset = (image.width - new_width) // 2
-        image = image.crop((offset, 0, offset + new_width, image.height))
-    else:
-        # Image is taller than 16:9, crop the height
-        new_height = int(image.width / target_ratio)
-        offset = (image.height - new_height) // 2
-        image = image.crop((0, offset, image.width, offset + new_height))
-
-    # Resize to video dimensions
-    image = image.resize((video_width, video_height), Image.LANCZOS)
-
-    # Apply a black opacity scrim
-    overlay = int((OVERLAY_OPACITY/100)*255)
-    overlay = Image.new('RGBA', image.size, (0, 0, 0, 255//overlay))
-    image_with_scrim = Image.alpha_composite(image.convert('RGBA'), overlay)
-
-    # Apply a heavy blur to the image (this will serve as the background)
-    blurred_image_with_scrim = image_with_scrim.filter(ImageFilter.GaussianBlur(radius=BLUR_STRENGTH))
-
-    # Save the blurred background temporarily
-    blurred_background_path = 'temp_blurred_background.png'
-    blurred_image_with_scrim.save(blurred_background_path)
-
-    # Load the original image again for overlay (ensure it's square for rounded edges)
-    image = Image.open(image_path)
-    image_size = 1080 - 2*SPACE_AROUND_IMAGE
-    image = image.resize((image_size, image_size), Image.LANCZOS)
-
-    # Create a mask for rounded corners
-    mask = Image.new('L', image.size, 0)
-    draw = ImageDraw.Draw(mask)
-    draw.rounded_rectangle([0, 0, image_size, image_size], radius=50, fill=255)
-
-    # Apply the rounded mask to the image
-    image_with_rounded_corners = Image.new('RGBA', image.size)
-    image_with_rounded_corners.paste(image, (0, 0), mask=mask)
-
-    # Position the image on the right-hand side of the video frame
-    final_background = Image.open(blurred_background_path)
-    image_position = (video_width - image_with_rounded_corners.width - SPACE_AROUND_IMAGE, SPACE_AROUND_IMAGE)  # Adjust positioning as necessary
-    final_background.paste(image_with_rounded_corners, image_position, image_with_rounded_corners)
-
-    # Save the final composed image temporarily
-    final_image_path = 'output/testOutput/background.png'
-    final_background.save(final_image_path)
-    return final_image_path, image_size
-
-def clipIntroducing(bg_path, image_size, lines, currently_on, dialogue_path=False):
+def clipIntroducing(img_path, dialogue_path=False):
     """Makes a clip introducing a question or possible answer"""
     #Build the dialogue out and determine how long the video will be
     if dialogue_path:
@@ -105,114 +96,22 @@ def clipIntroducing(bg_path, image_size, lines, currently_on, dialogue_path=Fals
     else:
         dialogue = AudioFileClip("resources/15-seconds-of-silence.mp3").subclip(0, MIN_LENGTH_OF_CLIP)
         video_duration = MIN_LENGTH_OF_CLIP
-    
-    bg = ImageClip(bg_path, duration=video_duration)
-    question_text = TextClip(
-        lines[0], 
-        font=FONT, 
-        method="caption", 
-        align="west", 
-        fontsize=QUESTION_SIZE, 
-        color="white", 
-        kerning=0, 
-        interline=(INTERLINE * QUESTION_SIZE),
-        size=(1920 - image_size - 2*SPACE_AROUND_IMAGE, None)
-    ).set_pos((LEFT_MARGIN, 207)).set_duration(video_duration)
 
-    new_line = 207 + question_text.size[1] + 72
-
-    clips = [bg, question_text]
-
-    i = 1
-    while i <= currently_on:
-        new_text = TextClip(
-            lines[i], 
-            font=FONT, 
-            method="caption", 
-            align="west", 
-            fontsize=ANSWER_SIZE, 
-            color='white', 
-            kerning=0, 
-            interline=(INTERLINE * ANSWER_SIZE),
-            size=(1920 - image_size - 2*SPACE_AROUND_IMAGE, None)
-        ).set_duration(video_duration).set_pos((LEFT_MARGIN, new_line))
-        
-        new_line += (new_text.size[1] + 48)
-        clips.append(new_text)
-        i+=1
-
-    clip = CompositeVideoClip(clips)
+    clip = ImageClip(img_path, duration=video_duration)
     clip.audio = dialogue
-
     return clip
 
-def fadeIncorrect(bg_path, image_size, lines, faded, duration=TIME_BETWEEN_FADE):
-    video_duration = duration
-    bg = ImageClip(bg_path, duration=video_duration)
-    question_text = TextClip(
-        lines[0], 
-        font=FONT, 
-        method="caption", 
-        align="west", 
-        fontsize=QUESTION_SIZE, 
-        color="white", 
-        kerning=0, 
-        interline=(INTERLINE * QUESTION_SIZE),
-        size=(1920 - image_size - 2*SPACE_AROUND_IMAGE, None)
-    ).set_pos((LEFT_MARGIN, 207)).set_duration(video_duration)
-
-    new_line = 207 + question_text.size[1] + 72
-
-    clips = [bg, question_text]
-
-    i = 1
-    while i <= 4:
-        
-        new_text = TextClip(
-            lines[i], 
-            font=FONT, 
-            method="caption", 
-            align="west", 
-            fontsize=ANSWER_SIZE, 
-            color='white', 
-            kerning=0, 
-            interline=(INTERLINE * ANSWER_SIZE),
-            size=(1920 - image_size - 2*SPACE_AROUND_IMAGE, None)
-        ).set_duration(video_duration).set_pos((LEFT_MARGIN, new_line))
-        if i in faded:
-            new_text = new_text.set_opacity(1)
-        
-        new_line += (new_text.size[1] + 48)
-        clips.append(new_text)
-        i+=1
-
-    clip = CompositeVideoClip(clips)
-
+def fadeIncorrect(img_path, duration=TIME_BETWEEN_FADE):
+    clip = ImageClip(img_path, duration=duration)
     return clip
-
 
 def makeClip(title, entry, musicstart):
-    image_path = entry["image_path"]
-    final_image_path, image_size = makeBackground(image_path)
-    dialogue_paths = [f"output/{title}/{entry['id']}_{each}.mp3" for each in ["question", "A", "B", "C", "D"]]
-
-    answers = [
-        entry["question"],
-        entry["A"],
-        entry["B"],
-        entry["C"],
-        entry["D"]
-    ]
-    clips =[]
-    incorrect = [0, 1, 2, 3, 4]
-    random.shuffle(incorrect)
-    incorrect.remove(entry["answer"])
-
-    answerblock = []
-    for i in range(0, 5):
-        clips.append(clipIntroducing(final_image_path, image_size, answers, i, dialogue_paths[i]))
-    for i in range(1, 4):
-        answerblock.append(fadeIncorrect(final_image_path, image_size, answers, incorrect[0:i]))
+    partial_path = f'output/{title}/slideImages/{entry}_'
+    dialogue_paths = [f"output/{title}/audio/{entry}_{each}.mp3" for each in ["question", "A", "B", "C", "D"]]
+    clips = [clipIntroducing(partial_path + "question.png", dialogue_paths[0])]
+    for i in range(1, 5):
+        clips.append(clipIntroducing(partial_path + f'answer{i}.png', dialogue_paths[i]))
+    answerblock = [fadeIncorrect(partial_path+f'incorrect_{i}.png') for i in range(1, 4)]
     answerblock = combine_videos_with_transition(answerblock, 1.5)
     time_to_answer = answerblock.duration
     bgm = AudioFileClip("resources/thinking-time.mp3").volumex(BGM_VOLUME)
@@ -223,62 +122,22 @@ def makeClip(title, entry, musicstart):
     bgm = bgm.subclip(musicstart, musicend)
     bgm = audio_fadein(bgm, 2)
     bgm = audio_fadeout(bgm, 2)
-
-    answer_audio = AudioFileClip(f"output/{title}/{entry['id']}_answer_statement.mp3").fx(vfx.speedx, factor=AUDIO_SPEED)
+    answer_audio = AudioFileClip(f"output/{title}/audio/{entry}_answer_statement.mp3").fx(vfx.speedx, factor=AUDIO_SPEED)
     twosec = AudioFileClip("resources/15-seconds-of-silence.mp3").subclip(0,6)
     answer_audio = concatenate_audioclips([answer_audio, twosec])
-    answer_clip = fadeIncorrect(final_image_path, image_size, answers, incorrect, duration=answer_audio.duration + 6)
     bgm = concatenate_audioclips([bgm, answer_audio])
+    answer_clip = fadeIncorrect(partial_path+f'incorrect_4.png',duration=answer_audio.duration + 6)
     answerblock = combine_videos_with_transition([answerblock, answer_clip], 1.5)
     answerblock.audio = bgm
     clips.append(answerblock)
-
-    fact_clip = funFact(final_image_path, image_size, entry["fun_fact"], f"output/{title}/{entry['id']}_fun_fact.mp3")
-    clips.append(fact_clip)
-
+    clips.append(clipIntroducing(partial_path+"fun.png", f"output/{title}/audio/{entry}_fun fact.mp3" ))
     clip = combine_videos_with_transition(clips, 1.5)
-    clip = addLogo(clip)
     return clip, musicend
 
-def funFact(bg_path, image_size, fact, dialogue_path=False):
-    """Makes a clip stating a fun fact"""
-    #Build the dialogue out and determine how long the video will be
-    if dialogue_path:
-        dialogue = AudioFileClip(dialogue_path)
-        dialogue = dialogue.fx(vfx.speedx, factor=AUDIO_SPEED)
-        before_speech = AudioFileClip("resources/5-seconds-of-silence.mp3").subclip(0, DELAY_BEFORE_SPEECH)
-        dialogue = concatenate_audioclips([before_speech, dialogue])
-        video_duration = max(dialogue.duration + PAUSE_AFTER_SPEECH, MIN_LENGTH_OF_CLIP)
-        dialogue = concatenate_audioclips([dialogue, AudioFileClip("resources/15-seconds-of-silence.mp3")]).subclip(0, video_duration)
-    else:
-        dialogue = AudioFileClip("resources/15-seconds-of-silence.mp3").subclip(0, MIN_LENGTH_OF_CLIP)
-        video_duration = MIN_LENGTH_OF_CLIP
-    
-    bg = ImageClip(bg_path, duration=video_duration)
-    funFact = TextClip(
-        fact, 
-        font=FONT, 
-        method="caption", 
-        align="west", 
-        fontsize=QUESTION_SIZE, 
-        color="white", 
-        kerning=0, 
-        interline=(INTERLINE * QUESTION_SIZE),
-        size=(1920 - image_size - 3*SPACE_AROUND_IMAGE, None)
-    ).set_pos((LEFT_MARGIN, "center")).set_duration(video_duration)
-
-    clips = [bg, funFact]
-    clip = CompositeVideoClip(clips)
-    clip.audio = dialogue
-
-    return clip
-
-
-def finish_quiz(title, clipLocations):
+def finish_quiz(title, questions):
     
     try:
         # Process the quiz questions
-        questions = [VideoFileClip(each) for each in clipLocations]
         questions = [item for elem in questions for item in (elem, ColorClip(size=(1920,1080), color=(0, 0, 0), duration=4.5))]
         
         # Combine questions with transitions
@@ -310,26 +169,32 @@ def finish_quiz(title, clipLocations):
     except Exception as e:
         print(f"Error writing video file: {e}")
 
+def make_directories(title):
+    import os
+    directories = [
+        f"output/{title}/audio",
+        f"output/{title}/images",
+        f"output/{title}/slideImages",
+        f"output/{title}/partial_vids"
+        ]
+    for each in directories:
+        if not os.path.exists(each):
+            os.makedirs(each)
+            
 def preprocess_quiz(title):
         with open(f"output/{title}/{title}.json", "r") as file:
             quiz = json.load(file)
-        my_title = makeTitle(title, (1920, 1080))
-        title_path = f"output/{title}/title.mp4"
-        my_title.write_videofile(title_path, fps=24, threads=8)
-        clips = [title_path]
-        for each in range(0, len(quiz)):
-            clips.append(f'output/{title}/{each}_partial.mp4')
-            print(f"added {each}")
+        #make_title_page(title)
+        my_title = ImageClip(f"output/{title}/slideImages/title.png", duration=8)
+        clips = [my_title]
         music = 0
-        # for each in quiz:
-        #     print(f"working {each}")
-        #     getAudioFor(title, each)
-        #     question, music= makeClip(title, each, music)
-        #     output_path = f'output/{title}/{each["id"]}_partial.mp4'
-        #     question.write_videofile(output_path, fps=24, threads=8)
-        #     clips.append(output_path)
-        #     print(f"I've processed {each['id']}!")
-
+        for i in range(0, 1):
+            print(f"working {i}")
+            #Slide(title, i, quiz[i])
+            #getAudioFor(title, each)
+            question, music= makeClip(title, i, music)
+            clips.append(question)
+            print(f"I've processed {i}!")
         return clips
 
     
@@ -340,7 +205,24 @@ if __name__ == "__main__":
     # os.remove(blurred_background_path)
     # os.remove(final_image_path)
 
-    print("running!")
+    # print("running!")
+    # title = "Fishing in Alaska"
+    # clips = preprocess_quiz(title)
+    # finish_quiz(title, clips)
+    import time
+    clipA = ImageClip('output/Fishing in Alaska/images/1.png', duration=6)
+    clipB = ImageClip('output/Fishing in Alaska/images/3.png', duration=6)
+    # start_time = time.time()
+    # my_clip = combine_videos_with_transition([clipA, clipB], 2)
+    # my_clip.write_videofile("output/Fishing in Alaska/help.mp4", fps=24, threads=8)
+    # end_time = time.time()
+    # print(f"Function1 ran in {end_time - start_time} seconds")
+    start_time = time.time()
+    temps = make_temp_files([clipA, clipB])
+    ffmpeg_crossfade(temps, 'output/AARDVARK.mp4', 2)
+    clean_up_temps(temps)
+    end_time = time.time()
+    print(f"Function2 ran in {end_time - start_time} seconds")
 
     # makeBackground("output/All About Dogs/0.png")
     # clip=funFact(
@@ -351,14 +233,14 @@ if __name__ == "__main__":
     # )
     # clip.write_videofile("output/testOutput/funfact1.mp4", fps=24)
 
-    making = "All About Dogs"
-    partial = preprocess_quiz(making)
-    finish_quiz(making, partial)
-    making = "The History of Beer"
-    partial = preprocess_quiz(making)
-    finish_quiz(making, partial)
-    import os
-    os.system("shutdown /s /t 1")
+    # making = "All About Dogs"
+    # partial = preprocess_quiz(making)
+    # finish_quiz(making, partial)
+    # making = "The History of Beer"
+    # partial = preprocess_quiz(making)
+    # finish_quiz(making, partial)
+    # import os
+    # os.system("shutdown /s /t 1")
 
     # from AI.stableFunctions import getPathToImage
     # title="All About Dogs"

@@ -1,5 +1,5 @@
 from PIL import Image, ImageDraw, ImageFilter
-from text_shit import create_text_image
+from Slide_Creation.text_shit import create_text_image
 import random
 
 
@@ -70,12 +70,25 @@ class Slide:
         incorrect.remove(lib["answer"])
         for i in range(0, 4):
             self.makeSlideWithout(incorrect[0:i], f"incorrect_{i+1}")
+        
+        funfact = create_text_image(
+            f'output/{self.name}/slideImages/{self.number}_background.png',
+            lib["fun fact"],
+            font_path=FONT, 
+            initial_font_size= QUESTION_SIZE, 
+            interline_factor=INTERLINE, 
+            max_width=1920 - 1080, 
+            max_height=500, 
+            left_margin=LEFT_MARGIN, 
+            y_position=290
+            )
+        funfact[0].save(f'output/{self.name}/slideImages/{self.number}_fun.png')
 
     def makeSlideWithout(self, answers, piece_name):
         #answer should be a list of numbers. If answer is [2, 3], then the second and third answers will be excluded
         part_name = f'output/{self.name}/slideImages/{self.number}_{piece_name}.png'
         current_state, foo = self.make_slide(
-            f'output/{self.name}/images/{self.number}_background.png',
+            f'output/{self.name}/slideImages/{self.number}_background.png',
             self.lib["question"],
             207,
             False
@@ -167,9 +180,33 @@ class Slide:
             image_position = (VIDEO_WIDTH - image_with_rounded_corners.width - SPACE_AROUND_IMAGE, SPACE_AROUND_IMAGE)  # Adjust positioning as necessary
             final_background.paste(image_with_rounded_corners, image_position, image_with_rounded_corners)
 
+            watermark = Image.open("resources/logo_small.png")
+            final_background.paste(watermark, (70, 85), watermark)
             # Save the final composed image temporarily
-            final_image_path = f'output/{self.name}/images/{self.number}_background.png'
+            final_image_path = f'output/{self.name}/slideImages/{self.number}_background.png'
             final_background.save(final_image_path)
+
+#Plops the zinnia watermark on a videoclip
+def addLogo(video):
+
+    # Load the watermark image
+    watermark = ImageClip("resources/logo.png")
+
+    # Resize the watermark if needed
+    watermark = watermark.resize(height=50)  # Adjust the height to your needs
+
+    # Set the position of the watermark (top-left corner)
+    watermark = watermark.set_position((70, 85))
+
+    watermark = watermark.set_opacity(.5)
+
+    # Set the duration of the watermark to match the video duration
+    watermark = watermark.set_duration(video.duration)
+
+    # Composite the video and the watermark
+    final_video = CompositeVideoClip([video, watermark])
+
+    return final_video
 
 myslide = {
         "id": 0,
