@@ -1,5 +1,5 @@
 from PIL import Image, ImageDraw, ImageFilter
-from Slide_Creation.text_shit import create_text_image
+from Slide_Creation.text_shit import create_text_image, make_title_page
 import random
 
 
@@ -221,6 +221,53 @@ myslide = {
         "prompt": "A large salmon",
         "image_path": "output/Fishing in Alaska/2.png"
 }
+def process_backgroundz(image_path):
+        with Image.open(image_path) as image:
+            image_ratio = image.width / image.height
+            target_ratio = VIDEO_WIDTH / VIDEO_HEIGHT
+            # Crop and zoom the image to fill 16:9 frame
+            if image_ratio > target_ratio:
+                # Image is wider than 16:9, crop the width
+                new_width = int(image.height * target_ratio)
+                offset = (image.width - new_width) // 2
+                cropped_image = image.crop((offset, 0, offset + new_width, image.height))
+            else:
+                # Image is taller than 16:9, crop the height
+                new_height = int(image.width / target_ratio)
+                offset = (image.height - new_height) // 2
+                cropped_image = image.crop((0, offset, image.width, offset + new_height))
+            resized_image = cropped_image.resize((VIDEO_WIDTH, VIDEO_HEIGHT), Image.LANCZOS)
 
+            # Apply a black opacity scrim
+            overlay = int((OVERLAY_OPACITY/100)*255)
+            overlay = Image.new('RGBA', resized_image.size, (0, 0, 0, 255//overlay))
+            image_with_scrim = Image.alpha_composite(resized_image.convert('RGBA'), overlay)
+
+            # Apply a heavy blur to the image (this will serve as the background)
+            final_background = image_with_scrim.filter(ImageFilter.GaussianBlur(radius=BLUR_STRENGTH))
+
+            # Ensure image is square with rounded edges
+            image_size = 1080 - 2*SPACE_AROUND_IMAGE
+            image = image.resize((image_size, image_size), Image.LANCZOS)
+
+            # Create a mask for rounded corners
+            mask = Image.new('L', image.size, 0)
+            draw = ImageDraw.Draw(mask)
+            draw.rounded_rectangle([0, 0, image_size, image_size], radius=50, fill=255)
+
+            # Apply the rounded mask to the image
+            image_with_rounded_corners = Image.new('RGBA', image.size)
+            image_with_rounded_corners.paste(image, (0, 0), mask=mask)
+
+            # Position the image on the right-hand side of the video frame
+            image_position = (VIDEO_WIDTH - image_with_rounded_corners.width - SPACE_AROUND_IMAGE, SPACE_AROUND_IMAGE)  # Adjust positioning as necessary
+            final_background.paste(image_with_rounded_corners, image_position, image_with_rounded_corners)
+
+            watermark = Image.open("resources/logo_small.png")
+            final_background.paste(watermark, (70, 85), watermark)
+            # Save the final composed image temporarily
+            final_image_path = f'output/testoutput_background1.png'
+            final_background.save(final_image_path)
 if __name__ == "__main__":
-    Slide("testOutput", 1, myslide)
+    process_backgroundz("output/All About Dogs/0.png")
+    make_title_page("All About Dogs", f'output/testoutput_background1.png')

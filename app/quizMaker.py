@@ -26,10 +26,9 @@ TIME_BETWEEN_FADE = 6
 BGM_VOLUME = .2
 
 import subprocess
-
 def ffmpeg_crossfade(clips, output_filename, crossfade_duration=1):
     """
-    Apply crossfades between a list of video clips using FFmpeg.
+    Apply crossfades between a list of video clips using FFmpeg, with conditional audio handling.
     
     Parameters:
     clips (list): List of file paths to the video clips.
@@ -38,21 +37,38 @@ def ffmpeg_crossfade(clips, output_filename, crossfade_duration=1):
     """
     filter_complex = ""
     inputs = []
-    last_input = None
+    last_video = None
+    last_audio = None
 
     for i, clip in enumerate(clips):
         inputs.append(f"-i {clip}")
-        if last_input is None:
-            last_input = f"[{i}:v][{i}:a]"
+        
+        if last_video is None:
+            # First video, no crossfade yet
+            last_video = f"[{i}:v]"
+            last_audio = f"[{i}:a]"
         else:
-            filter_complex += f"[{i-1}:v][{i}:v]xfade=transition=fade:duration={crossfade_duration}:offset={i-1}[v{i}];"
+            # Add video crossfade
+            filter_complex += f"[{i-1}:v][{i}:v]xfade=transition=fade:duration={crossfade_duration}:offset=0[v{i}];"
+            last_video = f"[v{i}]"
             filter_complex += f"[{i-1}:a][{i}:a]acrossfade=d={crossfade_duration}[a{i}];"
-            last_input = f"[v{i}][a{i}]"
+            last_audio = f"[a{i}]"
+
+    # Use the final filter output for the video
+    final_video = f"[v{len(clips)-1}]"
     
     # Construct the full FFmpeg command
-    command = f"ffmpeg {' '.join(inputs)} -filter_complex \"{filter_complex}\" -map \"{last_input}\" {output_filename}"
+    command = f"ffmpeg {' '.join(inputs)} -filter_complex \"{filter_complex}\" -map {final_video}"
+    
+    # Map audio if it was present and handled
+    if last_audio:
+        final_audio = f"[a{len(clips)-1}]"
+        command += f" -map {final_audio}"
+    
+    command += f" {output_filename}"
 
     # Call FFmpeg
+    print(command)
     subprocess.run(command, shell=True)
 
 def combine_videos_with_transition(clips, transition_duration):
@@ -70,7 +86,6 @@ def combine_into(clips, filename, transition):
     clean_up_temps(temps)
 
 def make_temp_files(clips):
-    import os
     import tempfile
     temp_files = []
     for i, clip in enumerate(clips):
@@ -112,8 +127,7 @@ def makeClip(title, entry, musicstart):
     for i in range(1, 5):
         clips.append(clipIntroducing(partial_path + f'answer{i}.png', dialogue_paths[i]))
     answerblock = [fadeIncorrect(partial_path+f'incorrect_{i}.png') for i in range(1, 4)]
-    answerblock = combine_videos_with_transition(answerblock, 1.5)
-    time_to_answer = answerblock.duration
+    time_to_answer = answerblock[0].duration - (len(answerblock)-1)*1.5
     bgm = AudioFileClip("resources/thinking-time.mp3").volumex(BGM_VOLUME)
     musicend = musicstart + time_to_answer + 2
     if musicend > bgm.duration:
@@ -127,47 +141,27 @@ def makeClip(title, entry, musicstart):
     answer_audio = concatenate_audioclips([answer_audio, twosec])
     bgm = concatenate_audioclips([bgm, answer_audio])
     answer_clip = fadeIncorrect(partial_path+f'incorrect_4.png',duration=answer_audio.duration + 6)
-    answerblock = combine_videos_with_transition([answerblock, answer_clip], 1.5)
+    block_name = f"output/{title}/tempVids/answers{entry}.mp4"
+    answerblock.append(answer_clip)
+    print(answerblock)
+    combine_into(answerblock, block_name, 1.5)
+    answerblock = VideoFileClip(block_name)
     answerblock.audio = bgm
     clips.append(answerblock)
     clips.append(clipIntroducing(partial_path+"fun.png", f"output/{title}/audio/{entry}_fun fact.mp3" ))
-    clip = combine_videos_with_transition(clips, 1.5)
-    return clip, musicend
+    final_name = f"output/{title}/tempVids/slide{entry}.mp4"
+    combine_into (clips, final_name, 1.5)
+    return final_name, musicend
 
 def finish_quiz(title, questions):
-    
-    try:
-        # Process the quiz questions
-        questions = [item for elem in questions for item in (elem, ColorClip(size=(1920,1080), color=(0, 0, 0), duration=4.5))]
-        
-        # Combine questions with transitions
-        my_clip = combine_videos_with_transition(questions, 1)
-    except Exception as e:
-        print(f"Error combining videos: {e}")
-        return
 
-    try:
-        # Add logo
-        my_clip = addLogo(my_clip)
-    except Exception as e:
-        print(f"Error adding logo: {e}")
-        return
-        
-    try:
-        # Add end card
-        end_card = VideoFileClip("resources/endcredits.m4v").resize(my_clip.size)
-        my_clip = combine_videos_with_transition([my_clip, end_card], 1)
-    except Exception as e: 
-        print(f"Error adding end card: {e}")
-        return
-        
-    try:
-        # Write final video file
-        output_path = f'output/{title}/{title}Final.mp4'
-        my_clip.write_videofile(output_path, fps=24, threads=8)
-        print(f"Successfully created video: {output_path}")
-    except Exception as e:
-        print(f"Error writing video file: {e}")
+    # Process the quiz questions
+    questions = [item for elem in questions for item in (elem, "resources/blackspace.mp4")]
+    questions.append("resources/endcredits.mp4")
+    # Write final video file
+    output_path = f'output/{title}/{title}Final.mp4'
+    ffmpeg_crossfade(questions, output_path, 1.5)
+    print(f"Successfully created video: {output_path}")
 
 def make_directories(title):
     import os
@@ -186,7 +180,9 @@ def preprocess_quiz(title):
             quiz = json.load(file)
         #make_title_page(title)
         my_title = ImageClip(f"output/{title}/slideImages/title.png", duration=8)
-        clips = [my_title]
+        title_name = f"output/{title}/tempVids/title.mp4"
+        #my_title.write_videofile(title_name, fps=24)
+        clips = [title_name]
         music = 0
         for i in range(0, 1):
             print(f"working {i}")
@@ -200,6 +196,7 @@ def preprocess_quiz(title):
     
 
 if __name__ == "__main__":
+
     # # Cleanup temporary images
     # import os
     # os.remove(blurred_background_path)
@@ -207,36 +204,24 @@ if __name__ == "__main__":
 
     # print("running!")
     # title = "Fishing in Alaska"
-    # clips = preprocess_quiz(title)
+    # clips = preprocess_quiz(title)s
     # finish_quiz(title, clips)
-    import time
-    clipA = ImageClip('output/Fishing in Alaska/images/1.png', duration=6)
-    clipB = ImageClip('output/Fishing in Alaska/images/3.png', duration=6)
-    # start_time = time.time()
-    # my_clip = combine_videos_with_transition([clipA, clipB], 2)
-    # my_clip.write_videofile("output/Fishing in Alaska/help.mp4", fps=24, threads=8)
-    # end_time = time.time()
-    # print(f"Function1 ran in {end_time - start_time} seconds")
-    start_time = time.time()
-    temps = make_temp_files([clipA, clipB])
-    ffmpeg_crossfade(temps, 'output/AARDVARK.mp4', 2)
-    clean_up_temps(temps)
-    end_time = time.time()
-    print(f"Function2 ran in {end_time - start_time} seconds")
 
-    # makeBackground("output/All About Dogs/0.png")
-    # clip=funFact(
-    #     "output/testOutput/background.png",
-    #     1080 - 2*SPACE_AROUND_IMAGE,
-    #     "A wagging tail can mean many things, from excitement to curiosity.",
-    #     False
-    # )
-    # clip.write_videofile("output/testOutput/funfact1.mp4", fps=24)
-
-    # making = "All About Dogs"
+    vid1 = "output/testOutput/tempVids/vid1.mp4"
+    vid2 = "output/testOutput/tempVids/vid2.mp4"
+    # audio = AudioFileClip("resources/15-seconds-of-silence.mp3")
+    # audio = audio.set_duration(vid1.duration)
+    # vid1.set_audio(audio)
+    # vid2.set_audio(audio)
+    
+    # vid1.write_videofile("output/testOutput/tempVids/vid1.mp4", fps=24)
+    # vid2.write_videofile("output/testOutput/tempVids/vid2.mp4", fps=24)
+    ffmpeg_crossfade([vid1, vid2], "output/testOutput/tempVids/vid3.mp4", 1.5)
+    
+    # making = "All About Dogs"0a
     # partial = preprocess_quiz(making)
     # finish_quiz(making, partial)
-    # making = "The History of Beer"
+    # making = "The History of Beer"0a
     # partial = preprocess_quiz(making)
     # finish_quiz(making, partial)
     # import os
