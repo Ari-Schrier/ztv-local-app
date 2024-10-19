@@ -7,6 +7,7 @@ from AI.aiFunctions import getSpeech
 import json
 from videoFunctions import *
 from random import shuffle
+from ffmpeg import merge_crossfade_ffmpeg as ffmpeg_crossfade
 
 BLUR_STRENGTH = 200
 OVERLAY_OPACITY = 60
@@ -25,52 +26,6 @@ TIME_BETWEEN_FADE = 6
 #Testing at 8, 6, and 4
 BGM_VOLUME = .2
 
-import subprocess
-def ffmpeg_crossfade(clips, output_filename, crossfade_duration=1):
-    """
-    Apply crossfades between a list of video clips using FFmpeg, with conditional audio handling.
-    
-    Parameters:
-    clips (list): List of file paths to the video clips.
-    output_filename (str): The output video file path.
-    crossfade_duration (int): Duration of the crossfade in seconds.
-    """
-    filter_complex = ""
-    inputs = []
-    last_video = None
-    last_audio = None
-
-    for i, clip in enumerate(clips):
-        inputs.append(f"-i {clip}")
-        
-        if last_video is None:
-            # First video, no crossfade yet
-            last_video = f"[{i}:v]"
-            last_audio = f"[{i}:a]"
-        else:
-            # Add video crossfade
-            filter_complex += f"[{i-1}:v][{i}:v]xfade=transition=fade:duration={crossfade_duration}:offset=0[v{i}];"
-            last_video = f"[v{i}]"
-            filter_complex += f"[{i-1}:a][{i}:a]acrossfade=d={crossfade_duration}[a{i}];"
-            last_audio = f"[a{i}]"
-
-    # Use the final filter output for the video
-    final_video = f"[v{len(clips)-1}]"
-    
-    # Construct the full FFmpeg command
-    command = f"ffmpeg {' '.join(inputs)} -filter_complex \"{filter_complex}\" -map {final_video}"
-    
-    # Map audio if it was present and handled
-    if last_audio:
-        final_audio = f"[a{len(clips)-1}]"
-        command += f" -map {final_audio}"
-    
-    command += f" {output_filename}"
-
-    # Call FFmpeg
-    print(command)
-    subprocess.run(command, shell=True)
-
 def combine_videos_with_transition(clips, transition_duration):
     return concatenate_videoclips([
             clip if i == 0 else clip.crossfadein(transition_duration)
@@ -80,17 +35,29 @@ def combine_videos_with_transition(clips, transition_duration):
         method="compose"
     )
 
-def combine_into(clips, filename, transition):
+def combine_into(clips, filename, transition, black=False):
     temps = make_temp_files(clips)
+    if black:
+        temps.append("resources\\blackspace.mp4")
     ffmpeg_crossfade(temps, filename, transition)
+    if black:
+        temps.remove("resources\\blackspace.mp4")
     clean_up_temps(temps)
+
+# def make_temp_files(clips):
+#     files = []
+#     for i, clip in enumerate(clips):
+#         filename = f"output/testOutput/tempvids/makeTemp{i}.mp4"
+#         clip.write_videofile(filename, fps=24, codec='libx264')
+#         files.append(filename)
+#     return files
 
 def make_temp_files(clips):
     import tempfile
     temp_files = []
     for i, clip in enumerate(clips):
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
-        clip.write_videofile(temp_file, fps=24, codec='libx264')
+        clip.write_videofile(temp_file, fps=24, codec='libx264', logger=None)
         temp_files.append(temp_file)
     return temp_files
 def clean_up_temps(file_paths):
@@ -107,17 +74,19 @@ def clipIntroducing(img_path, dialogue_path=False):
         before_speech = AudioFileClip("resources/5-seconds-of-silence.mp3").subclip(0, DELAY_BEFORE_SPEECH)
         dialogue = concatenate_audioclips([before_speech, dialogue])
         video_duration = max(dialogue.duration + PAUSE_AFTER_SPEECH, MIN_LENGTH_OF_CLIP)
-        dialogue = concatenate_audioclips([dialogue, AudioFileClip("resources/15-seconds-of-silence.mp3")]).subclip(0, video_duration)
+        dialogue = concatenate_audioclips([dialogue, AudioFileClip("resources/30-seconds-of-silence.mp3")]).subclip(0, video_duration)
     else:
-        dialogue = AudioFileClip("resources/15-seconds-of-silence.mp3").subclip(0, MIN_LENGTH_OF_CLIP)
+        dialogue = AudioFileClip("resources/30-seconds-of-silence.mp3").subclip(0, MIN_LENGTH_OF_CLIP)
         video_duration = MIN_LENGTH_OF_CLIP
 
     clip = ImageClip(img_path, duration=video_duration)
     clip.audio = dialogue
     return clip
 
-def fadeIncorrect(img_path, duration=TIME_BETWEEN_FADE):
-    clip = ImageClip(img_path, duration=duration)
+def fadeIncorrect(img_path, aud_duration=TIME_BETWEEN_FADE):
+    clip = ImageClip(img_path, duration=aud_duration)
+    aud = AudioFileClip("resources/30-seconds-of-silence.mp3").subclip(0, aud_duration)
+    clip.audio = aud
     return clip
 
 def makeClip(title, entry, musicstart):
@@ -127,7 +96,10 @@ def makeClip(title, entry, musicstart):
     for i in range(1, 5):
         clips.append(clipIntroducing(partial_path + f'answer{i}.png', dialogue_paths[i]))
     answerblock = [fadeIncorrect(partial_path+f'incorrect_{i}.png') for i in range(1, 4)]
-    time_to_answer = answerblock[0].duration - (len(answerblock)-1)*1.5
+    #time_to_answer = answerblock[0].duration - (len(answerblock)-1)*1.5
+    time_to_answer = 1.5
+    for each in answerblock:
+        time_to_answer += each.duration - 1.5
     bgm = AudioFileClip("resources/thinking-time.mp3").volumex(BGM_VOLUME)
     musicend = musicstart + time_to_answer + 2
     if musicend > bgm.duration:
@@ -140,27 +112,36 @@ def makeClip(title, entry, musicstart):
     twosec = AudioFileClip("resources/15-seconds-of-silence.mp3").subclip(0,6)
     answer_audio = concatenate_audioclips([answer_audio, twosec])
     bgm = concatenate_audioclips([bgm, answer_audio])
-    answer_clip = fadeIncorrect(partial_path+f'incorrect_4.png',duration=answer_audio.duration + 6)
+    answer_clip = fadeIncorrect(partial_path+f'incorrect_4.png',aud_duration=answer_audio.duration + 6)
     block_name = f"output/{title}/tempVids/answers{entry}.mp4"
     answerblock.append(answer_clip)
-    print(answerblock)
     combine_into(answerblock, block_name, 1.5)
     answerblock = VideoFileClip(block_name)
     answerblock.audio = bgm
     clips.append(answerblock)
     clips.append(clipIntroducing(partial_path+"fun.png", f"output/{title}/audio/{entry}_fun fact.mp3" ))
     final_name = f"output/{title}/tempVids/slide{entry}.mp4"
-    combine_into (clips, final_name, 1.5)
+    combine_into (clips, final_name, 1.5, black=True)
     return final_name, musicend
 
-def finish_quiz(title, questions):
+def split_list(list, n):
+    k,m = divmod(len(list), n)
+    return [list[i*k+min(i,m):(i+1)*k + min(i+1, m)] for i in range(n)]
 
-    # Process the quiz questions
-    questions = [item for elem in questions for item in (elem, "resources/blackspace.mp4")]
-    questions.append("resources/endcredits.mp4")
+def finish_quiz(title, questions):
+    # Add the ending credits
+    #questions.append("resources/endcredits_silent.mp4")
+
+    splitUp = split_list(questions, 5)
+    final_parts = []
+    for i, each in enumerate(splitUp):
+        mid_output = f'output/{title}/{title}FinalPt{i}.mp4'
+        ffmpeg_crossfade(each, mid_output, 1.5)
+        final_parts.append(mid_output)
+
     # Write final video file
     output_path = f'output/{title}/{title}Final.mp4'
-    ffmpeg_crossfade(questions, output_path, 1.5)
+    ffmpeg_crossfade(final_parts, output_path, 1.5)
     print(f"Successfully created video: {output_path}")
 
 def make_directories(title):
@@ -169,7 +150,7 @@ def make_directories(title):
         f"output/{title}/audio",
         f"output/{title}/images",
         f"output/{title}/slideImages",
-        f"output/{title}/partial_vids"
+        f"output/{title}/tempVids"
         ]
     for each in directories:
         if not os.path.exists(each):
@@ -178,46 +159,58 @@ def make_directories(title):
 def preprocess_quiz(title):
         with open(f"output/{title}/{title}.json", "r") as file:
             quiz = json.load(file)
-        #make_title_page(title)
-        my_title = ImageClip(f"output/{title}/slideImages/title.png", duration=8)
         title_name = f"output/{title}/tempVids/title.mp4"
-        #my_title.write_videofile(title_name, fps=24)
         clips = [title_name]
         music = 0
-        for i in range(0, 1):
-            print(f"working {i}")
-            #Slide(title, i, quiz[i])
-            #getAudioFor(title, each)
-            question, music= makeClip(title, i, music)
-            clips.append(question)
-            print(f"I've processed {i}!")
+        for entry in range(0, len(quiz)):
+            clips.append(f"output/{title}/tempVids/slide{entry}.mp4")
+        # for i in range(0, len(quiz)):
+        #     print(f"Working slide {i}")
+        #     Slide(title, i, quiz[i])
+        #     #getAudioFor(title, each)
+        #     question, music= makeClip(title, i, music)
+        #     clips.append(question)
+        #make_title_page(title, f"output/{title}/slideImages/0_background.png")
+        #my_title = fadeIncorrect(f"output/{title}/slideImages/title.png", 8)
+        #my_title.write_videofile(title_name, fps=24, logger=None)
         return clips
 
     
 
 if __name__ == "__main__":
 
-    # # Cleanup temporary images
-    # import os
-    # os.remove(blurred_background_path)
-    # os.remove(final_image_path)
+    # questions = []
+    # for i in range(0, 7):
+    #     questions.append(f"output/testOutput/tempvids/makeTemp{i}.mp4")
+    # # Write final video file
+    # output_path = f'output/Fishing_In_Alaska/FUCK.mp4'
+    # ffmpeg_crossfade(questions, output_path, 1.5)
+    # #print(f"Successfully created video: {output_path}")0a
 
-    # print("running!")
-    # title = "Fishing in Alaska"
-    # clips = preprocess_quiz(title)s
-    # finish_quiz(title, clips)
+    #make_directories("All_About_Dogs")
 
-    vid1 = "output/testOutput/tempVids/vid1.mp4"
-    vid2 = "output/testOutput/tempVids/vid2.mp4"
-    # audio = AudioFileClip("resources/15-seconds-of-silence.mp3")
-    # audio = audio.set_duration(vid1.duration)
-    # vid1.set_audio(audio)
-    # vid2.set_audio(audio)
-    
-    # vid1.write_videofile("output/testOutput/tempVids/vid1.mp4", fps=24)
-    # vid2.write_videofile("output/testOutput/tempVids/vid2.mp4", fps=24)
-    ffmpeg_crossfade([vid1, vid2], "output/testOutput/tempVids/vid3.mp4", 1.5)
-    
+    import time
+    start_time=time.time()
+    print("running!")
+    title = "All_About_Dogs"
+    clips = preprocess_quiz(title)
+    finish_quiz(title, clips)
+    # vids = ["C:\\temporary_delete_me\\fuckme0.mp4", "C:\\temporary_delete_me\\fuckme1.mp4", "C:\\temporary_delete_me\\fuckme2.mp4"]
+    # ffmpeg_crossfade(vids, "C:\\temporary_delete_me\\fuckmeFOREVER.mp4", 3)
+    then = time.time()
+    print(f"The video processed in %.2f seconds" % (time.tile() - start_time))
+
+
+
+    # questions = ["output/Fishing_In_Alaska/tempVids/title.mp4", "output/Fishing_in_Alaska/tempVids/slide0.mp4"]
+    # questions = [item for elem in questions for item in (elem, "resources/blackspace.mp4")]
+    # questions.append("resources/endcredits_silent.mp4")
+    # # Write final video file
+    # output_path = f'output/Fishing_In_Alaska/Fishing_In_Alaska_Finality.mp4'
+    # ffmpeg_crossfade(questions, output_path, 1.5)
+    # print(f"Successfully created video: {output_path}")
+
+
     # making = "All About Dogs"0a
     # partial = preprocess_quiz(making)
     # finish_quiz(making, partial)

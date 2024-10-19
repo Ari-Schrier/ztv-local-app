@@ -131,7 +131,7 @@ class Slide:
             font_path=FONT, 
             initial_font_size=ANSWER_SIZE if answer else QUESTION_SIZE, 
             interline_factor=INTERLINE, 
-            max_width=1920 - 1080, 
+            max_width=1920 - 1080 -85, 
             max_height=145 if answer else 291, 
             left_margin=LEFT_MARGIN, 
             y_position=y
@@ -185,28 +185,6 @@ class Slide:
             # Save the final composed image temporarily
             final_image_path = f'output/{self.name}/slideImages/{self.number}_background.png'
             final_background.save(final_image_path)
-
-#Plops the zinnia watermark on a videoclip
-def addLogo(video):
-
-    # Load the watermark image
-    watermark = ImageClip("resources/logo.png")
-
-    # Resize the watermark if needed
-    watermark = watermark.resize(height=50)  # Adjust the height to your needs
-
-    # Set the position of the watermark (top-left corner)
-    watermark = watermark.set_position((70, 85))
-
-    watermark = watermark.set_opacity(.5)
-
-    # Set the duration of the watermark to match the video duration
-    watermark = watermark.set_duration(video.duration)
-
-    # Composite the video and the watermark
-    final_video = CompositeVideoClip([video, watermark])
-
-    return final_video
 
 myslide = {
         "id": 0,

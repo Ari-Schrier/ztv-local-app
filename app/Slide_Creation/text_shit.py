@@ -74,9 +74,9 @@ def create_text_image(background, text, font_path, initial_font_size, interline_
 def make_title_page(text, background, font_path="resources/HelveticaNeueBold.otf", size=(1920, 1080)):
     bg = Image.open(background)
     draw = ImageDraw.Draw(bg)
-    caption = text.lower()
+    caption = text.lower().replace("_", " ")
     # Fit the text to the box, reducing font size if needed
-    lines, final_font_size = fit_text_to_box(draw, caption, 1920 - 1080, 1080, font_path, 160, 1.2)
+    lines, final_font_size = fit_text_to_box(draw, caption, 1920 - 1080 -85, 1080, font_path, 160, 1.2)
     font = ImageFont.truetype(font_path, final_font_size)
     ascent, descent = font.getmetrics()
     line_height = ascent + descent
@@ -94,7 +94,6 @@ def make_title_page(text, background, font_path="resources/HelveticaNeueBold.otf
     watermark = Image.open("resources/logo_small.png")
     bg.paste(watermark, (70, 85), watermark)
     # Save or display the image
-    #filename = f'output/{text}/slideImages/title.png'
-    filename = "output/testOutput/dogTitle.png"
+    filename = f'output/{text}/slideImages/title.png'
     bg.save(filename)
 

@@ -1,2 +1,2 @@
-
-    # Fit the text to the box, reducing font size if needed
+float = 3.1415926535
+print(f"{float:.5f}")
