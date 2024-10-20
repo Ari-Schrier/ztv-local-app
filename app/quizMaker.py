@@ -7,7 +7,7 @@ from AI.aiFunctions import getSpeech
 import json
 from videoFunctions import *
 from random import shuffle
-from ffmpeg import merge_crossfade_ffmpeg as ffmpeg_crossfade
+from ffmpeg import merge_crossfade_ffmpeg as ffmpeg_crossfade, fix_inputs
 
 BLUR_STRENGTH = 200
 OVERLAY_OPACITY = 60
@@ -130,18 +130,21 @@ def split_list(list, n):
 
 def finish_quiz(title, questions):
     # Add the ending credits
-    #questions.append("resources/endcredits_silent.mp4")
+    # questions.append("resources/endcredits_silent.mp4")
 
-    splitUp = split_list(questions, 5)
-    final_parts = []
-    for i, each in enumerate(splitUp):
-        mid_output = f'output/{title}/{title}FinalPt{i}.mp4'
-        ffmpeg_crossfade(each, mid_output, 1.5)
-        final_parts.append(mid_output)
+    # splitUp = split_list(questions, 5)
+    # final_parts = []
+    # for i, each in enumerate(splitUp):
+    #     mid_output = f'output/{title}/{title}FinalPt{i}.mp4'
+    #     ffmpeg_crossfade(each, mid_output, 1.5)
+    #     final_parts.append(mid_output)
 
     # Write final video file
-    output_path = f'output/{title}/{title}Final.mp4'
-    ffmpeg_crossfade(final_parts, output_path, 1.5)
+    # output_path = f'output/{title}/{title}NoAudio.mp4'
+    # process_video_ffmpeg(questions, output_path, 1.5)
+    output_path = f'output/{title}/{title}DoneIHope.mp3'
+    #process_audio_ffmpeg(questions, output_path, 1.5)
+    ffmpeg_crossfade(questions, output_path, 1.5)
     print(f"Successfully created video: {output_path}")
 
 def make_directories(title):
@@ -162,17 +165,17 @@ def preprocess_quiz(title):
         title_name = f"output/{title}/tempVids/title.mp4"
         clips = [title_name]
         music = 0
-        for entry in range(0, len(quiz)):
-            clips.append(f"output/{title}/tempVids/slide{entry}.mp4")
-        # for i in range(0, len(quiz)):
-        #     print(f"Working slide {i}")
-        #     Slide(title, i, quiz[i])
+        # for entry in range(0, 3):
+        #     clips.append(f"output/{title}/tempVids/slide{entry}.mp4")
+        for i in range(0, 3):
+            print(f"Working slide {i}")
+        #     # Slide(title, i, quiz[i])
         #     #getAudioFor(title, each)
-        #     question, music= makeClip(title, i, music)
-        #     clips.append(question)
-        #make_title_page(title, f"output/{title}/slideImages/0_background.png")
-        #my_title = fadeIncorrect(f"output/{title}/slideImages/title.png", 8)
-        #my_title.write_videofile(title_name, fps=24, logger=None)
+            question, music= makeClip(title, i, music)
+            clips.append(question)
+        make_title_page(title, f"output/{title}/slideImages/0_background.png")
+        my_title = fadeIncorrect(f"output/{title}/slideImages/title.png", 8)
+        my_title.write_videofile(title_name, fps=24, logger=None)
         return clips
 
     
@@ -194,11 +197,13 @@ if __name__ == "__main__":
     print("running!")
     title = "All_About_Dogs"
     clips = preprocess_quiz(title)
+    for each in clips:
+        fix_inputs(each)
     finish_quiz(title, clips)
     # vids = ["C:\\temporary_delete_me\\fuckme0.mp4", "C:\\temporary_delete_me\\fuckme1.mp4", "C:\\temporary_delete_me\\fuckme2.mp4"]
     # ffmpeg_crossfade(vids, "C:\\temporary_delete_me\\fuckmeFOREVER.mp4", 3)
     then = time.time()
-    print(f"The video processed in %.2f seconds" % (time.tile() - start_time))
+    print(f"The video processed in %.2f seconds" % (time.time() - start_time))
 
 
 
