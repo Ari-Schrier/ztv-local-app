@@ -7,7 +7,7 @@ from AI.aiFunctions import getSpeech
 import json
 from videoFunctions import *
 from random import shuffle
-from ffmpeg import merge_crossfade_ffmpeg as ffmpeg_crossfade, fix_inputs
+from ffmpeg import merge_crossfade_ffmpeg as ffmpeg_crossfade
 
 BLUR_STRENGTH = 200
 OVERLAY_OPACITY = 60
@@ -109,10 +109,10 @@ def makeClip(title, entry, musicstart):
     bgm = audio_fadein(bgm, 2)
     bgm = audio_fadeout(bgm, 2)
     answer_audio = AudioFileClip(f"output/{title}/audio/{entry}_answer_statement.mp3").fx(vfx.speedx, factor=AUDIO_SPEED)
-    twosec = AudioFileClip("resources/15-seconds-of-silence.mp3").subclip(0,6)
+    twosec = AudioFileClip("resources/15-seconds-of-silence.mp3").subclip(0,3)
     answer_audio = concatenate_audioclips([answer_audio, twosec])
     bgm = concatenate_audioclips([bgm, answer_audio])
-    answer_clip = fadeIncorrect(partial_path+f'incorrect_4.png',aud_duration=answer_audio.duration + 6)
+    answer_clip = fadeIncorrect(partial_path+f'incorrect_4.png',aud_duration=answer_audio.duration + 3)
     block_name = f"output/{title}/tempVids/answers{entry}.mp4"
     answerblock.append(answer_clip)
     combine_into(answerblock, block_name, 1.5)
@@ -142,7 +142,7 @@ def finish_quiz(title, questions):
     # Write final video file
     # output_path = f'output/{title}/{title}NoAudio.mp4'
     # process_video_ffmpeg(questions, output_path, 1.5)
-    output_path = f'output/{title}/{title}DoneIHope.mp3'
+    output_path = f'output/{title}/{title}.mp4'
     #process_audio_ffmpeg(questions, output_path, 1.5)
     ffmpeg_crossfade(questions, output_path, 1.5)
     print(f"Successfully created video: {output_path}")
@@ -165,74 +165,79 @@ def preprocess_quiz(title):
         title_name = f"output/{title}/tempVids/title.mp4"
         clips = [title_name]
         music = 0
-        # for entry in range(0, 3):
-        #     clips.append(f"output/{title}/tempVids/slide{entry}.mp4")
-        for i in range(0, 3):
+
+        for i in range(0, len(quiz)):
             print(f"Working slide {i}")
-        #     # Slide(title, i, quiz[i])
-        #     #getAudioFor(title, each)
+            Slide(title, i, quiz[i])
+            getAudioFor(title, quiz[i])
             question, music= makeClip(title, i, music)
             clips.append(question)
+
+        # for entry in range(0, len(quiz)):
+        #      clips.append(f"output/{title}/tempVids/slide{entry}.mp4")
+
+        firstclip = clips [0:2]
+        otherclips = clips[2:]
+        random.shuffle(otherclips)
+        clips = firstclip + otherclips
+
         make_title_page(title, f"output/{title}/slideImages/0_background.png")
         my_title = fadeIncorrect(f"output/{title}/slideImages/title.png", 8)
         my_title.write_videofile(title_name, fps=24, logger=None)
         return clips
 
-    
+def set_all_answer_to(title, choice):
+    with open(f"output/{title}/{title}.json", "r") as file:
+            my_json = json.load(file)
+    for each in my_json:
+        each["answer"] = choice
+    with open(f"output/{title}/{title}.json", "w") as file:
+        json.dump(my_json, file, indent=4)
+
+def scramble_answers(title):
+    abcd = ["Zombocom", "A", "B", "C", "D"]
+    with open(f"output/{title}/{title}.json", "r") as file:
+            my_json = json.load(file)
+    for each in my_json:
+        new_answer = random.randint(1, 4)
+        old_answer = each["answer"]
+        if new_answer != old_answer:
+            each[abcd[old_answer]], each[abcd[new_answer]] = each[abcd[new_answer]], each[abcd[old_answer]]
+            each["answer"] = new_answer
+    with open(f"output/{title}/{title}.json", "w") as file:
+        json.dump(my_json, file, indent=4)
 
 if __name__ == "__main__":
 
-    # questions = []
-    # for i in range(0, 7):
-    #     questions.append(f"output/testOutput/tempvids/makeTemp{i}.mp4")
-    # # Write final video file
-    # output_path = f'output/Fishing_In_Alaska/FUCK.mp4'
-    # ffmpeg_crossfade(questions, output_path, 1.5)
-    # #print(f"Successfully created video: {output_path}")0a
-
-    #make_directories("All_About_Dogs")
+    # make_directories("The_History_of_Beer")
 
     import time
     start_time=time.time()
     print("running!")
-    title = "All_About_Dogs"
+    title =  "Name_That_Sea_Animal"
     clips = preprocess_quiz(title)
-    for each in clips:
-        fix_inputs(each)
     finish_quiz(title, clips)
-    # vids = ["C:\\temporary_delete_me\\fuckme0.mp4", "C:\\temporary_delete_me\\fuckme1.mp4", "C:\\temporary_delete_me\\fuckme2.mp4"]
-    # ffmpeg_crossfade(vids, "C:\\temporary_delete_me\\fuckmeFOREVER.mp4", 3)
-    then = time.time()
-    print(f"The video processed in %.2f seconds" % (time.time() - start_time))
-
-
-
-    # questions = ["output/Fishing_In_Alaska/tempVids/title.mp4", "output/Fishing_in_Alaska/tempVids/slide0.mp4"]
-    # questions = [item for elem in questions for item in (elem, "resources/blackspace.mp4")]
-    # questions.append("resources/endcredits_silent.mp4")
-    # # Write final video file
-    # output_path = f'output/Fishing_In_Alaska/Fishing_In_Alaska_Finality.mp4'
-    # ffmpeg_crossfade(questions, output_path, 1.5)
-    # print(f"Successfully created video: {output_path}")
-
-
-    # making = "All About Dogs"0a
-    # partial = preprocess_quiz(making)
-    # finish_quiz(making, partial)
-    # making = "The History of Beer"0a
-    # partial = preprocess_quiz(making)
-    # finish_quiz(making, partial)
-    # import os
+    total_time = time.strftime('%H:%M:%S', time.gmtime(time.time() - start_time))
+    print(f"The video processed in {total_time}")
+    
     # os.system("shutdown /s /t 1")
 
+
+    # with open(f"output/Flags_Of_The_World/Flags_Of_The_World.json", "r") as file:
+    #         my_json = json.load(file)
+    # with open(f"output/Flags_Of_The_World/Flags_Of_The_World.json", "w") as file:
+    #     json.dump(my_json, file, indent=4)
+
     # from AI.stableFunctions import getPathToImage
-    # title="All About Dogs"
+    # title="Name_That_Sea_Animal"
     # with open(f"output/{title}/{title}.json", "r") as file:
     #     json_data = json.load(file)
-    # for i in [30]:
+    # # for i in range(0, len(json_data)):
+    # for i in [0, 5, 10, 11, 12, 15, 23, 29, 31]:
     #     json_data[i]["id"] = i
-    #     print(f"Processing image {i}/{len(json_data)} (This will take a bit)")
+    #     print(f"Processing image {i}/{len(json_data)-1} (This will take a bit)")
     #     path = getPathToImage(title, json_data[i]["prompt"], i, ratio = "1:1")
+    #     path = f"output/{title}/images/{i}.png"
     #     json_data[i]["image_path"] = path
     #     print("Processed!")
     # with open(f"output/{title}/{title}.json", "w") as file:

@@ -79,15 +79,12 @@ def make_title_page(text, background, font_path="resources/HelveticaNeueBold.otf
     lines, final_font_size = fit_text_to_box(draw, caption, 1920 - 1080 -85, 1080, font_path, 160, 1.2)
     font = ImageFont.truetype(font_path, final_font_size)
     ascent, descent = font.getmetrics()
-    line_height = ascent + descent
+    line_height = ascent
     adjusted_line_height = line_height * 1.2
-
-    text_size = 0
-    for line in lines:
-        text_bbox = draw.textbbox((0,0), line, font=font)
-        text_size += text_bbox[3] - text_bbox[1]
-    #text_size += adjusted_line_height * (len(lines)-1)
-    y_pos = (size[1]/2) - (text_size/2)
+    total_text_height = len(lines) * adjusted_line_height
+    print(f"text size calculated as {total_text_height}")
+    y_pos = (size[1] -total_text_height)/2
+    print(f"y-pos calculated as {y_pos}")
     for line in lines:
         draw.text((120, y_pos), line, font=font, fill="white")  # Draw text line
         y_pos += adjusted_line_height  # Move to the next line with the adjusted line height

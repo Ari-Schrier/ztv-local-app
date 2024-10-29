@@ -82,7 +82,7 @@ def getPictureURL(title, prompt, id):
         )
     image_url = response.data[0].url
     image_data = requests.get(image_url).content
-    file_location = f"output/{title}/{id}.png"
+    file_location = f"output/{title}/images/{id}.png"
     with open(file_location, "wb") as file:
         file.write(image_data)
     return file_location

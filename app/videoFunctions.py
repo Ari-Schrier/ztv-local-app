@@ -7,8 +7,8 @@ VOICE_ACTOR= "shimmer"
 
 #Fetches audio via openAI API of the chosen voice actor reading all lines.
 def getAudioFor(video_title, question):
-    destination = f"output/{video_title}/{question['id']}_"
-    for each in ["question", "fun_fact", "answer_statement"]:
+    destination = f"output/{video_title}/audio/{question['id']}_"
+    for each in ["question", "fun fact", "answer_statement"]:
         getSpeech(destination+each+".mp3", question[each], VOICE_ACTOR)
     getSpeech(destination + "A.mp3", "Is the answer " + question["A"] +"?", VOICE_ACTOR)
     for each in ["B", "C"]:

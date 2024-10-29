@@ -76,7 +76,7 @@ def getPathToImage(title, prompt, id, ratio="16:9"):
     if not os.path.exists(new_folder_path):
         os.makedirs(new_folder_path)
 
-    f"{OUTPUT_DIRECTORY}/{title}/{id}.png"
+    f"{OUTPUT_DIRECTORY}/{title}/images/{id}.png"
     response = requests.post(
     f"https://api.stability.ai/v2beta/stable-image/generate/core",
     headers={
@@ -93,9 +93,9 @@ def getPathToImage(title, prompt, id, ratio="16:9"):
     )
 
     if response.status_code == 200:
-        with open(f"{new_folder_path}\\{id}.png", 'wb') as file:
+        with open(f"{new_folder_path}\\images\\{id}.png", 'wb') as file:
             file.write(response.content)
     else:
         raise Exception(str(response.json()))
-    return f"{OUTPUT_DIRECTORY}/{title}/{id}.png"
+    return f"{OUTPUT_DIRECTORY}/{title}/images/{id}.png"
 
