@@ -2,18 +2,22 @@ from moviepy.editor import *
 from AI.aiFunctions import getSpeech
 import random
 
-VOICE_ACTOR= "shimmer"
+VOICE_ACTOR= "echo"
 #All extant voice actors: ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
+
+def getTitleAudio(title, intro):
+    destination = f"output/{title}/audio/title.mp3"
+    getSpeech(destination, intro, VOICE_ACTOR)
 
 #Fetches audio via openAI API of the chosen voice actor reading all lines.
 def getAudioFor(video_title, question):
     destination = f"output/{video_title}/audio/{question['id']}_"
-    for each in ["question", "fun fact", "answer_statement"]:
+    for each in ["question", "fun_fact", "answer_statement"]:
         getSpeech(destination+each+".mp3", question[each], VOICE_ACTOR)
     getSpeech(destination + "A.mp3", "Is the answer " + question["A"] +"?", VOICE_ACTOR)
-    for each in ["B", "C"]:
+    for each in ["B"]:
         getSpeech(destination+each+".mp3", "Is it " + question[each] +"?", VOICE_ACTOR)
-    getSpeech(destination + "D.mp3", "Or is it " + question["D"] +"?", VOICE_ACTOR)
+    getSpeech(destination + "C.mp3", "Or is it " + question["C"] +"?", VOICE_ACTOR)
     
 #Combines multiple video clips with a crossfade effect
 def combine_videos_with_transition(clips, transition_duration):

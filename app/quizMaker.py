@@ -19,12 +19,12 @@ LEFT_MARGIN = 85
 INTERLINE = 0.2
 AUDIO_SPEED = .95
 DELAY_BEFORE_SPEECH = 2
-PAUSE_AFTER_SPEECH = 3
+PAUSE_AFTER_SPEECH = 3.2
 MIN_LENGTH_OF_CLIP = 5
-TIME_BETWEEN_FADE = 6
+TIME_BETWEEN_FADE = 5
 #Original time was 10
 #Testing at 8, 6, and 4
-BGM_VOLUME = .2
+BGM_VOLUME = .14
 
 def combine_videos_with_transition(clips, transition_duration):
     return concatenate_videoclips([
@@ -91,16 +91,17 @@ def fadeIncorrect(img_path, aud_duration=TIME_BETWEEN_FADE):
 
 def makeClip(title, entry, musicstart):
     partial_path = f'output/{title}/slideImages/{entry}_'
-    dialogue_paths = [f"output/{title}/audio/{entry}_{each}.mp3" for each in ["question", "A", "B", "C", "D"]]
+    dialogue_paths = [f"output/{title}/audio/{entry}_{each}.mp3" for each in ["question", "A", "B", "C"]]
     clips = [clipIntroducing(partial_path + "question.png", dialogue_paths[0])]
-    for i in range(1, 5):
+    for i in range(1, 4):
         clips.append(clipIntroducing(partial_path + f'answer{i}.png', dialogue_paths[i]))
-    answerblock = [fadeIncorrect(partial_path+f'incorrect_{i}.png') for i in range(1, 4)]
+    clips.append(fadeIncorrect(partial_path + f'answer{3}.png', 2))
+    answerblock = [fadeIncorrect(partial_path+f'incorrect_{i}.png') for i in range(1, 3)]
     #time_to_answer = answerblock[0].duration - (len(answerblock)-1)*1.5
     time_to_answer = 1.5
     for each in answerblock:
         time_to_answer += each.duration - 1.5
-    bgm = AudioFileClip("resources/thinking-time.mp3").volumex(BGM_VOLUME)
+    bgm = AudioFileClip("resources/2-minutes-and-30-seconds-of-silence.mp3").volumex(BGM_VOLUME)
     musicend = musicstart + time_to_answer + 2
     if musicend > bgm.duration:
         musicstart = 0
@@ -112,14 +113,14 @@ def makeClip(title, entry, musicstart):
     twosec = AudioFileClip("resources/15-seconds-of-silence.mp3").subclip(0,3)
     answer_audio = concatenate_audioclips([answer_audio, twosec])
     bgm = concatenate_audioclips([bgm, answer_audio])
-    answer_clip = fadeIncorrect(partial_path+f'incorrect_4.png',aud_duration=answer_audio.duration + 3)
+    answer_clip = fadeIncorrect(partial_path+f'incorrect_3.png',aud_duration=answer_audio.duration + 3)
     block_name = f"output/{title}/tempVids/answers{entry}.mp4"
     answerblock.append(answer_clip)
     combine_into(answerblock, block_name, 1.5)
     answerblock = VideoFileClip(block_name)
     answerblock.audio = bgm
     clips.append(answerblock)
-    clips.append(clipIntroducing(partial_path+"fun.png", f"output/{title}/audio/{entry}_fun fact.mp3" ))
+    clips.append(clipIntroducing(partial_path+"fun.png", f"output/{title}/audio/{entry}_fun_fact.mp3" ))
     final_name = f"output/{title}/tempVids/slide{entry}.mp4"
     combine_into (clips, final_name, 1.5, black=True)
     return final_name, musicend
@@ -130,20 +131,9 @@ def split_list(list, n):
 
 def finish_quiz(title, questions):
     # Add the ending credits
-    # questions.append("resources/endcredits_silent.mp4")
+    questions.append("resources/endcredits_silent.mp4")
 
-    # splitUp = split_list(questions, 5)
-    # final_parts = []
-    # for i, each in enumerate(splitUp):
-    #     mid_output = f'output/{title}/{title}FinalPt{i}.mp4'
-    #     ffmpeg_crossfade(each, mid_output, 1.5)
-    #     final_parts.append(mid_output)
-
-    # Write final video file
-    # output_path = f'output/{title}/{title}NoAudio.mp4'
-    # process_video_ffmpeg(questions, output_path, 1.5)
     output_path = f'output/{title}/{title}.mp4'
-    #process_audio_ffmpeg(questions, output_path, 1.5)
     ffmpeg_crossfade(questions, output_path, 1.5)
     print(f"Successfully created video: {output_path}")
 
@@ -166,23 +156,29 @@ def preprocess_quiz(title):
         clips = [title_name]
         music = 0
 
-        for i in range(0, len(quiz)):
-            print(f"Working slide {i}")
-            Slide(title, i, quiz[i])
-            getAudioFor(title, quiz[i])
-            question, music= makeClip(title, i, music)
-            clips.append(question)
+        first_slide = 0
 
-        # for entry in range(0, len(quiz)):
-        #      clips.append(f"output/{title}/tempVids/slide{entry}.mp4")
+        # getTitleAudio(title, "Welcome to the Zinnia TV quiz on the New Testament. How many questions can you answer?")
+
+        for entry in range(0, len(quiz)):
+            if entry not in [2, 3, 8, 11, 14, 17, 20, 21, 22, 23]:
+                clips.append(f"output/{title}/tempVids/slide{entry}.mp4")
+        
+        for i in range(0, len(quiz)):
+            if i in [3]:
+                print(f"Working slide {i}")
+                Slide(title, i, quiz[i])
+                getAudioFor(title, quiz[i])
+                question, music= makeClip(title, i, music)
+                clips.append(question)
 
         firstclip = clips [0:2]
         otherclips = clips[2:]
         random.shuffle(otherclips)
         clips = firstclip + otherclips
 
-        make_title_page(title, f"output/{title}/slideImages/0_background.png")
-        my_title = fadeIncorrect(f"output/{title}/slideImages/title.png", 8)
+        make_title_page(title, f"output/{title}/slideImages/{first_slide}_background.png")
+        my_title = clipIntroducing(f"output/{title}/slideImages/title.png",f"output/{title}/audio/title.mp3")
         my_title.write_videofile(title_name, fps=24, logger=None)
         return clips
 
@@ -199,7 +195,7 @@ def scramble_answers(title):
     with open(f"output/{title}/{title}.json", "r") as file:
             my_json = json.load(file)
     for each in my_json:
-        new_answer = random.randint(1, 4)
+        new_answer = random.randint(1, 3)
         old_answer = each["answer"]
         if new_answer != old_answer:
             each[abcd[old_answer]], each[abcd[new_answer]] = each[abcd[new_answer]], each[abcd[old_answer]]
@@ -209,12 +205,17 @@ def scramble_answers(title):
 
 if __name__ == "__main__":
 
-    # make_directories("The_History_of_Beer")
+    title="christmas_traditions_around_the_world"
+    # make_directories(title)
+    # scramble_answers(title)
+
+    # scramble_answers("american_literature")
+    # scramble_answers("birds_of_new_england")
+    # scramble_answers("greek_mythology")
 
     import time
     start_time=time.time()
     print("running!")
-    title =  "Name_That_Sea_Animal"
     clips = preprocess_quiz(title)
     finish_quiz(title, clips)
     total_time = time.strftime('%H:%M:%S', time.gmtime(time.time() - start_time))
@@ -222,18 +223,11 @@ if __name__ == "__main__":
     
     # os.system("shutdown /s /t 1")
 
-
-    # with open(f"output/Flags_Of_The_World/Flags_Of_The_World.json", "r") as file:
-    #         my_json = json.load(file)
-    # with open(f"output/Flags_Of_The_World/Flags_Of_The_World.json", "w") as file:
-    #     json.dump(my_json, file, indent=4)
-
     # from AI.stableFunctions import getPathToImage
-    # title="Name_That_Sea_Animal"
-    # with open(f"output/{title}/{title}.json", "r") as file:
+    # with open(f"output/{title}/{title}.json", "r", encoding="utf-8") as file:
     #     json_data = json.load(file)
     # # for i in range(0, len(json_data)):
-    # for i in [0, 5, 10, 11, 12, 15, 23, 29, 31]:
+    # for i in [3, 5, 6,9, 10, 14, 18]:
     #     json_data[i]["id"] = i
     #     print(f"Processing image {i}/{len(json_data)-1} (This will take a bit)")
     #     path = getPathToImage(title, json_data[i]["prompt"], i, ratio = "1:1")

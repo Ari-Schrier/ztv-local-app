@@ -38,46 +38,39 @@ class Slide:
         self.answer_1_top += 30
         answer_1_shown, self.answer_2_top=self.make_slide(
             q_name,
-            lib["A"],
+            "A: " + lib["A"],
             self.answer_1_top
         )
         a1_name = f'output/{self.name}/slideImages/{self.number}_answer1.png'
         answer_1_shown.save(a1_name)
         answer_2_shown, self.answer_3_top=self.make_slide(
             a1_name,
-            lib["B"],
+            "B: " + lib["B"],
             self.answer_2_top
         )
         a2_name = f'output/{self.name}/slideImages/{self.number}_answer2.png'
         answer_2_shown.save(a2_name)
         answer_3_shown, self.answer_4_top=self.make_slide(
             a2_name,
-            lib["C"],
+            "C: " + lib["C"],
             self.answer_3_top
         )
         a3_name = f'output/{self.name}/slideImages/{self.number}_answer3.png'
         answer_3_shown.save(a3_name)
-        answer_4_shown, foo=self.make_slide(
-            a3_name,
-            lib["D"],
-            self.answer_4_top
-        )
-        a4_name = f'output/{self.name}/slideImages/{self.number}_answer4.png'
-        answer_4_shown.save(a4_name)
         
-        incorrect = [1, 2, 3, 4]
+        incorrect = [1, 2, 3]
         random.shuffle(incorrect)
         incorrect.remove(lib["answer"])
-        for i in range(0, 4):
+        for i in range(0, 3):
             self.makeSlideWithout(incorrect[0:i], f"incorrect_{i+1}")
         
         funfact = create_text_image(
             f'output/{self.name}/slideImages/{self.number}_background.png',
-            lib["fun fact"],
+            lib["fun_fact"],
             font_path=FONT, 
             initial_font_size= QUESTION_SIZE, 
             interline_factor=INTERLINE, 
-            max_width=1920 - 1080, 
+            max_width=1920 - 1080 -85, 
             max_height=500, 
             left_margin=LEFT_MARGIN, 
             y_position=290
@@ -97,29 +90,22 @@ class Slide:
         if 1 not in answers:
             current_state, foo=self.make_slide(
             part_name,
-            self.lib["A"],
+            "A: " + self.lib["A"],
             self.answer_1_top
             )
             current_state.save(part_name)
         if 2 not in answers:
             current_state, foo=self.make_slide(
             part_name,
-            self.lib["B"],
+            "B: " + self.lib["B"],
             self.answer_2_top
             )
             current_state.save(part_name)
         if 3 not in answers:
             current_state, foo=self.make_slide(
             part_name,
-            self.lib["C"],
+            "C: " + self.lib["C"],
             self.answer_3_top
-            )
-            current_state.save(part_name)
-        if 4 not in answers:
-            current_state, foo=self.make_slide(
-            part_name,
-            self.lib["D"],
-            self.answer_4_top
             )
             current_state.save(part_name)
         
