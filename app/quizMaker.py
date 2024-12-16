@@ -89,7 +89,7 @@ def fadeIncorrect(img_path, aud_duration=TIME_BETWEEN_FADE):
     clip.audio = aud
     return clip
 
-def makeClip(title, entry, musicstart):
+def makeClip(title, entry):
     partial_path = f'output/{title}/slideImages/{entry}_'
     dialogue_paths = [f"output/{title}/audio/{entry}_{each}.mp3" for each in ["question", "A", "B", "C"]]
     clips = [clipIntroducing(partial_path + "question.png", dialogue_paths[0])]
@@ -102,6 +102,7 @@ def makeClip(title, entry, musicstart):
     for each in answerblock:
         time_to_answer += each.duration - 1.5
     bgm = AudioFileClip("resources/2-minutes-and-30-seconds-of-silence.mp3").volumex(BGM_VOLUME)
+    musicstart = 0
     musicend = musicstart + time_to_answer + 2
     if musicend > bgm.duration:
         musicstart = 0
@@ -123,7 +124,7 @@ def makeClip(title, entry, musicstart):
     clips.append(clipIntroducing(partial_path+"fun.png", f"output/{title}/audio/{entry}_fun_fact.mp3" ))
     final_name = f"output/{title}/tempVids/slide{entry}.mp4"
     combine_into (clips, final_name, 1.5, black=True)
-    return final_name, musicend
+    return final_name
 
 def split_list(list, n):
     k,m = divmod(len(list), n)
@@ -154,24 +155,30 @@ def preprocess_quiz(title):
             quiz = json.load(file)
         title_name = f"output/{title}/tempVids/title.mp4"
         clips = [title_name]
-        music = 0
 
-        first_slide = 0
+        first_slide = "Taco"
+        if not os.path.exists(f"output/{title}/audio/title.mp3"):
+            accepted = "N"
+            while accepted != "y":
+                title_speech = input("What would you like the introduction to this video to say?")
+                accepted = input(f"Is {title_speech} correct? (y/n)").lower()
+            getTitleAudio(title, title_speech)
 
-        # getTitleAudio(title, "Welcome to the Zinnia TV quiz on the New Testament. How many questions can you answer?")
-
-        for entry in range(0, len(quiz)):
-            if entry not in [2, 3, 8, 11, 14, 17, 20, 21, 22, 23]:
-                clips.append(f"output/{title}/tempVids/slide{entry}.mp4")
-        
         for i in range(0, len(quiz)):
-            if i in [3]:
-                print(f"Working slide {i}")
-                Slide(title, i, quiz[i])
-                getAudioFor(title, quiz[i])
-                question, music= makeClip(title, i, music)
-                clips.append(question)
-
+            if os.path.exists(f"output/{title}/images/{i}.png"):
+                if first_slide == "Taco":
+                    print(f"i = {i}, updating")
+                    first_slide = i
+                else:
+                    print(f"i = {i}, passing")
+                if os.path.exists(f"output/{title}/tempVids/slide{i}.mp4"):
+                    clips.append(f"output/{title}/tempVids/slide{i}.mp4")
+                else:
+                    print(f"Working slide {i}")
+                    Slide(title, i, quiz[i])
+                    getAudioFor(title, quiz[i])
+                    question= makeClip(title, i)
+                    clips.append(question)
         firstclip = clips [0:2]
         otherclips = clips[2:]
         random.shuffle(otherclips)
@@ -188,7 +195,7 @@ def set_all_answer_to(title, choice):
     for each in my_json:
         each["answer"] = choice
     with open(f"output/{title}/{title}.json", "w") as file:
-        json.dump(my_json, file, indent=4)
+        json.dump(my_json, file, indent=4, ensure_ascii=False)
 
 def scramble_answers(title):
     abcd = ["Zombocom", "A", "B", "C", "D"]
@@ -201,7 +208,7 @@ def scramble_answers(title):
             each[abcd[old_answer]], each[abcd[new_answer]] = each[abcd[new_answer]], each[abcd[old_answer]]
             each["answer"] = new_answer
     with open(f"output/{title}/{title}.json", "w") as file:
-        json.dump(my_json, file, indent=4)
+        json.dump(my_json, file, indent=4, ensure_ascii=False)
 
 if __name__ == "__main__":
 
@@ -222,21 +229,6 @@ if __name__ == "__main__":
     print(f"The video processed in {total_time}")
     
     # os.system("shutdown /s /t 1")
-
-    # from AI.stableFunctions import getPathToImage
-    # with open(f"output/{title}/{title}.json", "r", encoding="utf-8") as file:
-    #     json_data = json.load(file)
-    # # for i in range(0, len(json_data)):
-    # for i in [3, 5, 6,9, 10, 14, 18]:
-    #     json_data[i]["id"] = i
-    #     print(f"Processing image {i}/{len(json_data)-1} (This will take a bit)")
-    #     path = getPathToImage(title, json_data[i]["prompt"], i, ratio = "1:1")
-    #     path = f"output/{title}/images/{i}.png"
-    #     json_data[i]["image_path"] = path
-    #     print("Processed!")
-    # with open(f"output/{title}/{title}.json", "w") as file:
-    #     json.dump(json_data, file, indent=4)
-
 
     # for i in range(0, 30):
     #     json_data[i]["id"] = i

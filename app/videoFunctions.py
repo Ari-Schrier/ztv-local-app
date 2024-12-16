@@ -1,4 +1,5 @@
 from moviepy.editor import *
+import os
 from AI.aiFunctions import getSpeech
 import random
 
@@ -13,11 +14,15 @@ def getTitleAudio(title, intro):
 def getAudioFor(video_title, question):
     destination = f"output/{video_title}/audio/{question['id']}_"
     for each in ["question", "fun_fact", "answer_statement"]:
-        getSpeech(destination+each+".mp3", question[each], VOICE_ACTOR)
-    getSpeech(destination + "A.mp3", "Is the answer " + question["A"] +"?", VOICE_ACTOR)
+        if not os.path.exists(destination+each+".mp3"):
+            getSpeech(destination+each+".mp3", question[each], VOICE_ACTOR)
+    if not os.path.exists(destination + "A.mp3"):
+        getSpeech(destination + "A.mp3", "Is the answer " + question["A"] +"?", VOICE_ACTOR)
     for each in ["B"]:
-        getSpeech(destination+each+".mp3", "Is it " + question[each] +"?", VOICE_ACTOR)
-    getSpeech(destination + "C.mp3", "Or is it " + question["C"] +"?", VOICE_ACTOR)
+        if not os.path.exists(destination+each+".mp3"):
+            getSpeech(destination+each+".mp3", "Is it " + question[each] +"?", VOICE_ACTOR)
+    if not os.path.exists(destination + "C.mp3"):
+        getSpeech(destination + "C.mp3", "Or is it " + question["C"] +"?", VOICE_ACTOR)
     
 #Combines multiple video clips with a crossfade effect
 def combine_videos_with_transition(clips, transition_duration):
