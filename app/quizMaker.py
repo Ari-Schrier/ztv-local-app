@@ -167,10 +167,7 @@ def preprocess_quiz(title):
         for i in range(0, len(quiz)):
             if os.path.exists(f"output/{title}/images/{i}.png"):
                 if first_slide == "Taco":
-                    print(f"i = {i}, updating")
                     first_slide = i
-                else:
-                    print(f"i = {i}, passing")
                 if os.path.exists(f"output/{title}/tempVids/slide{i}.mp4"):
                     clips.append(f"output/{title}/tempVids/slide{i}.mp4")
                 else:
@@ -221,7 +218,7 @@ if __name__ == "__main__":
     # scramble_answers("greek_mythology")
 
     import time
-    start_time=time.time()
+    # start_time=time.time()
     print("running!")
     clips = preprocess_quiz(title)
     finish_quiz(title, clips)

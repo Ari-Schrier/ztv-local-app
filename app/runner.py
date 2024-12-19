@@ -18,10 +18,13 @@ class Program_Runner:
             if not os.path.exists(each):
                 os.makedirs(each)
 
-    def get_images(self):
+    def get_images(self, specific_image = False):
         title=self.title
         with open(f"output/{title}/{title}.json", "r", encoding="utf-8") as file:
             json_data = json.load(file)
+        if specific_image:
+            path = getPathToImage(title, json_data[specific_image]["prompt"], specific_image, ratio = "1:1")
+            return
         for i in range(0, len(json_data)):
             if not os.path.exists(f"output/{title}/images/{i}.png"):
                 json_data[i]["id"] = i
@@ -31,7 +34,7 @@ class Program_Runner:
                 json_data[i]["image_path"] = path
                 print("Processed!")
         with open(f"output/{title}/{title}.json", "w") as file:
-            json.dump(json_data, file, indent=4, ensure_ascii=True)
+            json.dump(json_data, file, indent=4, ensure_ascii=False)
 
 
     def __init__(self):
@@ -48,7 +51,7 @@ class Program_Runner:
                 input(f"{self.title}.json was not found. Drop it into the output/{self.title} directory and press enter to proceed")
         running = True
         while running:
-            print("Enter 1 to generate pictures.\nEnter 2 to make the quiz.\nEnter 3 to scramble answers.\nEnter q to quit")
+            print("Enter 1 to generate pictures.\nEnter 2 to make the quiz.\nEnter 3 to scramble answers.\nEnter 4 to regenerate a specific image.\nEnter q to quit")
             choice = input("What would you like to do?\n")
             if choice == "1":
                 print("Generating all missing images. Please do not edit the JSON until all images are generated\n")
@@ -58,8 +61,13 @@ class Program_Runner:
                 print("Making the video! This may take a while.")
                 clips = preprocess_quiz(self.title)
                 finish_quiz(self.title, clips)
+                running = False
             if choice == "3":
                 scramble_answers(self.title)
+            if choice == "4":
+                choice = input("Which image would you like to regenerate?\n")
+                if choice.isnumeric():
+                    self.get_images(int(choice))
             if choice == "q":
                 running=False
 
