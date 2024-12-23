@@ -71,12 +71,12 @@ def clipIntroducing(img_path, dialogue_path=False):
     if dialogue_path:
         dialogue = AudioFileClip(dialogue_path)
         dialogue = dialogue.fx(vfx.speedx, factor=AUDIO_SPEED)
-        before_speech = AudioFileClip("resources/5-seconds-of-silence.mp3").subclip(0, DELAY_BEFORE_SPEECH)
+        before_speech = AudioFileClip(os.path.join("resources","5-seconds-of-silence.mp3").subclip(0, DELAY_BEFORE_SPEECH)
         dialogue = concatenate_audioclips([before_speech, dialogue])
         video_duration = max(dialogue.duration + PAUSE_AFTER_SPEECH, MIN_LENGTH_OF_CLIP)
-        dialogue = concatenate_audioclips([dialogue, AudioFileClip("resources/30-seconds-of-silence.mp3")]).subclip(0, video_duration)
+        dialogue = concatenate_audioclips([dialogue, AudioFileClip(os.path.join("resources","30-seconds-of-silence.mp3"))]).subclip(0, video_duration)
     else:
-        dialogue = AudioFileClip("resources/30-seconds-of-silence.mp3").subclip(0, MIN_LENGTH_OF_CLIP)
+        dialogue = AudioFileClip(os.path.join("resources","30-seconds-of-silence.mp3")).subclip(0, MIN_LENGTH_OF_CLIP)
         video_duration = MIN_LENGTH_OF_CLIP
 
     clip = ImageClip(img_path, duration=video_duration)
@@ -85,13 +85,13 @@ def clipIntroducing(img_path, dialogue_path=False):
 
 def fadeIncorrect(img_path, aud_duration=TIME_BETWEEN_FADE):
     clip = ImageClip(img_path, duration=aud_duration)
-    aud = AudioFileClip("resources/30-seconds-of-silence.mp3").subclip(0, aud_duration)
+    aud = AudioFileClip(os.path.join("resources","30-seconds-of-silence.mp3")).subclip(0, aud_duration)
     clip.audio = aud
     return clip
 
 def makeClip(title, entry):
-    partial_path = f'output/{title}/slideImages/{entry}_'
-    dialogue_paths = [f"output/{title}/audio/{entry}_{each}.mp3" for each in ["question", "A", "B", "C"]]
+    partial_path = os.path.join("output",title,"slideImages", f"{entry}_")
+    dialogue_paths = [os.path.join("output", title, "audio", f"{entry}_{each}.mp3" for each in ["question", "A", "B", "C"]]
     clips = [clipIntroducing(partial_path + "question.png", dialogue_paths[0])]
     for i in range(1, 4):
         clips.append(clipIntroducing(partial_path + f'answer{i}.png', dialogue_paths[i]))
@@ -101,7 +101,7 @@ def makeClip(title, entry):
     time_to_answer = 1.5
     for each in answerblock:
         time_to_answer += each.duration - 1.5
-    bgm = AudioFileClip("resources/2-minutes-and-30-seconds-of-silence.mp3").volumex(BGM_VOLUME)
+    bgm = AudioFileClip(os.path.join("resources", "2-minutes-and-30-seconds-of-silence.mp3")).volumex(BGM_VOLUME)
     musicstart = 0
     musicend = musicstart + time_to_answer + 2
     if musicend > bgm.duration:
@@ -110,19 +110,19 @@ def makeClip(title, entry):
     bgm = bgm.subclip(musicstart, musicend)
     bgm = audio_fadein(bgm, 2)
     bgm = audio_fadeout(bgm, 2)
-    answer_audio = AudioFileClip(f"output/{title}/audio/{entry}_answer_statement.mp3").fx(vfx.speedx, factor=AUDIO_SPEED)
-    twosec = AudioFileClip("resources/15-seconds-of-silence.mp3").subclip(0,3)
+    answer_audio = AudioFileClip(os.path.join("output", title, "audio", "{entry}_answer_statement.mp3")).fx(vfx.speedx, factor=AUDIO_SPEED)
+    twosec = AudioFileClip(os.path.join("resources","15-seconds-of-silence.mp3")).subclip(0,3)
     answer_audio = concatenate_audioclips([answer_audio, twosec])
     bgm = concatenate_audioclips([bgm, answer_audio])
     answer_clip = fadeIncorrect(partial_path+f'incorrect_3.png',aud_duration=answer_audio.duration + 3)
-    block_name = f"output/{title}/tempVids/answers{entry}.mp4"
+    block_name = os.path.join("output", title, "tempvids", f"answers{entry}.mp4")
     answerblock.append(answer_clip)
     combine_into(answerblock, block_name, 1.5)
     answerblock = VideoFileClip(block_name)
     answerblock.audio = bgm
     clips.append(answerblock)
-    clips.append(clipIntroducing(partial_path+"fun.png", f"output/{title}/audio/{entry}_fun_fact.mp3" ))
-    final_name = f"output/{title}/tempVids/slide{entry}.mp4"
+    clips.append(clipIntroducing(partial_path+"fun.png", os.path.join("output", title "audio", f"{entry}_fun_fact.mp3" )))
+    final_name = os.path.join("output", title, "tempvids", f"slide{entry}.mp4")
     combine_into (clips, final_name, 1.5, black=True)
     return final_name
 
@@ -132,19 +132,19 @@ def split_list(list, n):
 
 def finish_quiz(title, questions):
     # Add the ending credits
-    questions.append("resources/endcredits_silent.mp4")
+    questions.append(os.path.join("resources", "endcredits_silent.mp4"))
 
-    output_path = f'output/{title}/{title}.mp4'
+    output_path = os.path.join("output", title, f"{title}.mp4"
     ffmpeg_crossfade(questions, output_path, 1.5)
     print(f"Successfully created video: {output_path}")
 
 def make_directories(title):
     import os
     directories = [
-        f"output/{title}/audio",
-        f"output/{title}/images",
-        f"output/{title}/slideImages",
-        f"output/{title}/tempVids"
+        os.path.join("output", title, "audio"),
+        os.path.join("output", title, "images"),
+        os.path.join("output", title, "slideImages"),
+        os.path.join("output", title, "tempVids")
         ]
     for each in directories:
         if not os.path.exists(each):
