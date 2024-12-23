@@ -91,7 +91,7 @@ def fadeIncorrect(img_path, aud_duration=TIME_BETWEEN_FADE):
 
 def makeClip(title, entry):
     partial_path = os.path.join("output",title,"slideImages", f"{entry}_")
-    dialogue_paths = [os.path.join("output", title, "audio", f"{entry}_{each}.mp3" for each in ["question", "A", "B", "C"]]
+    dialogue_paths = [os.path.join("output", title, "audio", f"{entry}_{each}.mp3") for each in ["question", "A", "B", "C"]]
     clips = [clipIntroducing(partial_path + "question.png", dialogue_paths[0])]
     for i in range(1, 4):
         clips.append(clipIntroducing(partial_path + f'answer{i}.png', dialogue_paths[i]))
