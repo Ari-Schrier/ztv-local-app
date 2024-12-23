@@ -71,7 +71,7 @@ def clipIntroducing(img_path, dialogue_path=False):
     if dialogue_path:
         dialogue = AudioFileClip(dialogue_path)
         dialogue = dialogue.fx(vfx.speedx, factor=AUDIO_SPEED)
-        before_speech = AudioFileClip(os.path.join("resources","5-seconds-of-silence.mp3").subclip(0, DELAY_BEFORE_SPEECH)
+        before_speech = AudioFileClip(os.path.join("resources","5-seconds-of-silence.mp3")).subclip(0, DELAY_BEFORE_SPEECH)
         dialogue = concatenate_audioclips([before_speech, dialogue])
         video_duration = max(dialogue.duration + PAUSE_AFTER_SPEECH, MIN_LENGTH_OF_CLIP)
         dialogue = concatenate_audioclips([dialogue, AudioFileClip(os.path.join("resources","30-seconds-of-silence.mp3"))]).subclip(0, video_duration)
@@ -121,7 +121,7 @@ def makeClip(title, entry):
     answerblock = VideoFileClip(block_name)
     answerblock.audio = bgm
     clips.append(answerblock)
-    clips.append(clipIntroducing(partial_path+"fun.png", os.path.join("output", title "audio", f"{entry}_fun_fact.mp3" )))
+    clips.append(clipIntroducing(partial_path+"fun.png", os.path.join("output", title, "audio", f"{entry}_fun_fact.mp3" )))
     final_name = os.path.join("output", title, "tempvids", f"slide{entry}.mp4")
     combine_into (clips, final_name, 1.5, black=True)
     return final_name
@@ -134,7 +134,7 @@ def finish_quiz(title, questions):
     # Add the ending credits
     questions.append(os.path.join("resources", "endcredits_silent.mp4"))
 
-    output_path = os.path.join("output", title, f"{title}.mp4"
+    output_path = os.path.join("output", title, f"{title}.mp4")
     ffmpeg_crossfade(questions, output_path, 1.5)
     print(f"Successfully created video: {output_path}")
 
