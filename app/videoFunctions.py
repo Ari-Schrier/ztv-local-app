@@ -7,7 +7,7 @@ VOICE_ACTOR= "echo"
 #All extant voice actors: ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
 
 def getTitleAudio(title, intro):
-    destination = f"output/{title}/audio/title.mp3"
+    destination = os.path.join("output", title, "audio","title.mp3")
     getSpeech(destination, intro, VOICE_ACTOR)
 
 #Fetches audio via openAI API of the chosen voice actor reading all lines.

@@ -110,7 +110,7 @@ def makeClip(title, entry):
     bgm = bgm.subclip(musicstart, musicend)
     bgm = audio_fadein(bgm, 2)
     bgm = audio_fadeout(bgm, 2)
-    answer_audio = AudioFileClip(os.path.join("output", title, "audio", "{entry}_answer_statement.mp3")).fx(vfx.speedx, factor=AUDIO_SPEED)
+    answer_audio = AudioFileClip(os.path.join("output", title, "audio", f"{entry}_answer_statement.mp3")).fx(vfx.speedx, factor=AUDIO_SPEED)
     twosec = AudioFileClip(os.path.join("resources","15-seconds-of-silence.mp3")).subclip(0,3)
     answer_audio = concatenate_audioclips([answer_audio, twosec])
     bgm = concatenate_audioclips([bgm, answer_audio])
