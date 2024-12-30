@@ -151,7 +151,7 @@ def make_directories(title):
             os.makedirs(each)
             
 def preprocess_quiz(title):
-        with open(f"output/{title}/{title}.json", "r") as file:
+        with open(f"output/{title}/{title}.json", "r", encoding="utf-8") as file:
             quiz = json.load(file)
         title_name = f"output/{title}/tempVids/title.mp4"
         clips = [title_name]
@@ -187,16 +187,16 @@ def preprocess_quiz(title):
         return clips
 
 def set_all_answer_to(title, choice):
-    with open(f"output/{title}/{title}.json", "r") as file:
+    with open(f"output/{title}/{title}.json", "r", encoding="utf-8") as file:
             my_json = json.load(file)
     for each in my_json:
         each["answer"] = choice
-    with open(f"output/{title}/{title}.json", "w") as file:
+    with open(f"output/{title}/{title}.json", "w", encoding="utf-8") as file:
         json.dump(my_json, file, indent=4, ensure_ascii=False)
 
 def scramble_answers(title):
     abcd = ["Zombocom", "A", "B", "C", "D"]
-    with open(f"output/{title}/{title}.json", "r") as file:
+    with open(f"output/{title}/{title}.json", "r", encoding="utf-8") as file:
             my_json = json.load(file)
     for each in my_json:
         new_answer = random.randint(1, 3)
@@ -204,7 +204,7 @@ def scramble_answers(title):
         if new_answer != old_answer:
             each[abcd[old_answer]], each[abcd[new_answer]] = each[abcd[new_answer]], each[abcd[old_answer]]
             each["answer"] = new_answer
-    with open(f"output/{title}/{title}.json", "w") as file:
+    with open(f"output/{title}/{title}.json", "w", encoding="utf-8") as file:
         json.dump(my_json, file, indent=4, ensure_ascii=False)
 
 if __name__ == "__main__":

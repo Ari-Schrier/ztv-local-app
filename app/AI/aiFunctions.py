@@ -124,8 +124,8 @@ def saveJSON(title, questions, type):
 
     # Write the JSON data to the file
     try:
-        with open(filename, "w") as file:
-            json.dump(myJson, file, indent=4)
+        with open(filename, "w", encoding="utf-8") as file:
+            json.dump(myJson, file, indent=4, ensure_ascii=False)
         print(f"File {filename} written successfully.")
     except Exception as e:
         print(f"Error writing file: {e}")
