@@ -29,7 +29,7 @@ class Program_Runner:
             if not os.path.exists(f"output/{title}/images/{i}.png"):
                 json_data[i]["id"] = i
                 print(f"Processing image {i}/{len(json_data)-1} (This will take a bit)")
-                #path = getPathToImage(title, json_data[i]["prompt"], i, ratio = "1:1")
+                path = getPathToImage(title, json_data[i]["prompt"], i, ratio = "1:1")
                 path = f"output/{title}/images/{i}.png"
                 json_data[i]["image_path"] = path
                 print("Processed!")
