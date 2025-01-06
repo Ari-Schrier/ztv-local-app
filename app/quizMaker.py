@@ -199,6 +199,8 @@ def scramble_answers(title):
     with open(f"output/{title}/{title}.json", "r", encoding="utf-8") as file:
             my_json = json.load(file)
     for each in my_json:
+        if 'fun fact' in each:
+            each['fun_fact'] = each.pop('fun fact')
         new_answer = random.randint(1, 3)
         old_answer = each["answer"]
         if new_answer != old_answer:
