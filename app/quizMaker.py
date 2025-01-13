@@ -198,7 +198,10 @@ def scramble_answers(title):
     abcd = ["Zombocom", "A", "B", "C", "D"]
     with open(f"output/{title}/{title}.json", "r", encoding="utf-8") as file:
             my_json = json.load(file)
+    i = 0
     for each in my_json:
+        each["id"] = i
+        each["image_path"] = f"output/{title}/images/{i}.png"
         if 'fun fact' in each:
             each['fun_fact'] = each.pop('fun fact')
         new_answer = random.randint(1, 3)
