@@ -209,6 +209,7 @@ def scramble_answers(title):
         if new_answer != old_answer:
             each[abcd[old_answer]], each[abcd[new_answer]] = each[abcd[new_answer]], each[abcd[old_answer]]
             each["answer"] = new_answer
+        i += 1
     with open(f"output/{title}/{title}.json", "w", encoding="utf-8") as file:
         json.dump(my_json, file, indent=4, ensure_ascii=False)
 
