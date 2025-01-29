@@ -4,6 +4,7 @@ Runs the quiz-generator
 import os
 from AI.stableFunctions import getPathToImage
 from quizMaker import preprocess_quiz, finish_quiz, scramble_answers
+from jsonValidator import validate_json
 import json
 
 class Program_Runner:
@@ -49,6 +50,12 @@ class Program_Runner:
         if not os.path.exists(path+"/"+self.title+".json"):
             while not os.path.exists(path+"/"+self.title+".json"):
                 input(f"{self.title}.json was not found. Drop it into the output/{self.title} directory and press enter to proceed")
+        
+        valid_json = validate_json(path+"/"+self.title+".json")
+        while not valid_json:
+            input("Edit the file, then hit enter to re-validate the JSON")
+            valid_json = validate_json(path+"/"+self.title+".json")
+        
         running = True
         while running:
             print("Enter 1 to generate pictures.\nEnter 2 to make the quiz.\nEnter 3 to scramble answers.\nEnter 4 to regenerate a specific image.\nEnter q to quit")
