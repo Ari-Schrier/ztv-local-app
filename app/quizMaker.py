@@ -178,7 +178,7 @@ def preprocess_quiz(title):
                     clips.append(question)
         firstclip = clips [0:2]
         otherclips = clips[2:]
-        random.shuffle(otherclips)
+        #random.shuffle(otherclips)
         clips = firstclip + otherclips
 
         make_title_page(title, f"output/{title}/slideImages/{first_slide}_background.png")

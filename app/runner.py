@@ -5,6 +5,7 @@ import os
 from AI.stableFunctions import getPathToImage
 from quizMaker import preprocess_quiz, finish_quiz, scramble_answers
 from jsonValidator import validate_json
+from imgCropper import process_images
 import json
 
 class Program_Runner:
@@ -13,7 +14,8 @@ class Program_Runner:
             f"output/{self.title}/audio",
             f"output/{self.title}/images",
             f"output/{self.title}/slideImages",
-            f"output/{self.title}/tempVids"
+            f"output/{self.title}/tempVids",
+            f"output/{self.title}/publicDomain"
             ]
         for each in directories:
             if not os.path.exists(each):
@@ -58,7 +60,7 @@ class Program_Runner:
         
         running = True
         while running:
-            print("Enter 1 to generate pictures.\nEnter 2 to make the quiz.\nEnter 3 to scramble answers.\nEnter 4 to regenerate a specific image.\nEnter q to quit")
+            print("Enter 1 to generate pictures.\nEnter 2 to make the quiz.\nEnter 3 to scramble answers.\nEnter 4 to regenerate a specific image.\nEnter 5 to standardize all images.\nEnter q to quit")
             choice = input("What would you like to do?\n")
             if choice == "1":
                 print("Generating all missing images. Please do not edit the JSON until all images are generated\n")
@@ -75,6 +77,8 @@ class Program_Runner:
                 choice = input("Which image would you like to regenerate?\n")
                 if choice.isnumeric():
                     self.get_images(int(choice))
+            if choice == "5":
+                process_images(f"output/{self.title}/publicDomain", f"output/{self.title}/images")
             if choice == "q":
                 running=False
 
