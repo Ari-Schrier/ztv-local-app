@@ -1,0 +1,10 @@
+moviepy==1.0.3
+Pillow
+nest_asyncio
+google-generativeai
+google-genai
+typing_extensions
+openai
+IPython
+requests
+opencv-python
