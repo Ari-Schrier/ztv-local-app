@@ -8,7 +8,7 @@ from google import genai
 from daily_chronicle.genai_client import client, TEXT_MODEL, IMAGE_MODEL_ID, AUDIO_MODEL_ID
 
 # --- Temp storage directory setup ---
-TEMP_AUDIO_DIR = os.path.join(os.path.dirname(__file__), "data", "temp_audio")
+TEMP_AUDIO_DIR = os.path.join(os.path.dirname(__file__), "temp", "temp_audio_files")
 os.makedirs(TEMP_AUDIO_DIR, exist_ok=True)
 
 # --- In-memory tracking for cleanup ---
