@@ -6,3 +6,4 @@
 *.mp4
 *.pyc
 .venv/
+temp/
