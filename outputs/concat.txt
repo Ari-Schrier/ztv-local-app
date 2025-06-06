@@ -1,0 +1,4 @@
+file '/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp_video_files/title.mp4'
+file '/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_video_files/event_0_AB.mp4'
+file '/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_video_files/event_1_AB.mp4'
+file '/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_video_files/event_2_AB.mp4'
