@@ -233,6 +233,7 @@ class ImageReviewWindow(QWidget):
     # --- Threaded actions ---
 
     def on_regenerate(self):
+        self.save_current_event()
         prompt_text = self.image_prompt_input.toPlainText()
         worker = Worker(self.regenerate_image, prompt_text)
         worker.signals.result.connect(self.on_regen_result)
@@ -252,7 +253,9 @@ class ImageReviewWindow(QWidget):
             config={
                 "number_of_images": 1,
                 "output_mime_type": "image/jpeg",
-                "aspect_ratio": "1:1"
+                "aspect_ratio": "1:1",
+                "safety_filter_level": "BLOCK_ONLY_HIGH",
+                "person_generation": "ALLOW_ADULT"
             }
         )
 
@@ -264,7 +267,7 @@ class ImageReviewWindow(QWidget):
 
             save_dir = "temp/temp_image_files"
             os.makedirs(save_dir, exist_ok=True)
-            save_path = os.path.join(save_dir, f"regen_image_{self.index}.jpg")
+            save_path = os.path.join(save_dir, f"regen_image_{self.index + 1}.jpg")
             image.save(save_path, format="JPEG")
 
             return save_path
@@ -313,7 +316,7 @@ class ImageReviewWindow(QWidget):
 
                 save_dir = "temp/temp_image_files"
                 os.makedirs(save_dir, exist_ok=True)
-                save_path = os.path.join(save_dir, f"manual_image_{self.index}.jpg")
+                save_path = os.path.join(save_dir, f"manual_image_{self.index + 1}.jpg")
                 img.save(save_path, format="JPEG")
 
                 self.image_paths[self.index] = save_path
@@ -329,7 +332,7 @@ class ImageReviewWindow(QWidget):
 
         save_dir = "temp/temp_image_files"
         os.makedirs(save_dir, exist_ok=True)
-        save_path = os.path.join(save_dir, f"manual_image_{self.index}.jpg")
+        save_path = os.path.join(save_dir, f"manual_image_{self.index + 1}.jpg")
         img.save(save_path, format="JPEG")
 
         return save_path
