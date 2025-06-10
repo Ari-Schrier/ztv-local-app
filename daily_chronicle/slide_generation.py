@@ -74,22 +74,24 @@ def generate_title_slide(month, day, generate_audio_function):
 
 
 # --- Generate Event Pair ---
-def generate_daily_chronicle_pair(event, index, generate_audio_tts):
+def generate_daily_chronicle_pair(event, index, generate_audio_function):
     from moviepy.editor import AudioFileClip, ImageClip
     import os
 
-    # --- Generate TTS ---
-    audio_text = event["audio_text"]
-    print(f"🎙️ TTS: \"{audio_text}\"")
+    clip1_text = f"{event['date_string']} {event['description']} {event['detail_1']}"
+    clip2_text = event["detail_2"]
 
-    audio_filename = f"event_audio_{index}.wav"
-    audio_out_path = generate_audio_tts(audio_text, audio_filename)
+    print(f"🎙️ TTS: \"{clip1_text}\"")
+    audio_path_1 = generate_audio_function(clip1_text, f"audio_{index + 1}_1.wav")
+    print(f"🎙️ TTS: \"{clip2_text}\"")
+    audio_path_2 = generate_audio_function(clip2_text, f"audio_{index + 1}_2.wav")
+    temp_audio_files.extend([audio_path_1, audio_path_2])
 
-    # --- Load Audio Clip ---
-    audio_clip = AudioFileClip(audio_out_path)
+    raw_clip_1 = AudioFileClip(audio_path_1)
+    raw_clip_2 = AudioFileClip(audio_path_2)
 
-    # --- Pad audio ---
-    padded_audio_clip = pad_audio_with_silence(audio_clip, pre_duration=1, post_duration=2)
+    clip_1 = pad_audio_with_silence(raw_clip_1, pre_duration=1.0, post_duration=2.0)
+    clip_2 = pad_audio_with_silence(raw_clip_2, pre_duration=1.0, post_duration=2.0)
 
     # --- Image Generation ---
     prompt = event["image_prompt"]
@@ -113,9 +115,10 @@ def generate_daily_chronicle_pair(event, index, generate_audio_tts):
 
         image = Image.open(BytesIO(result.generated_images[0].image.image_bytes))
 
-        image_out_path = f"temp/temp_image_files/event_image_{index}.jpg"
+        image_out_path = f"temp/temp_image_files/event_image_{index + 1}.jpg"
         os.makedirs(os.path.dirname(image_out_path), exist_ok=True)
         image.save(image_out_path, format="JPEG")
+        temp_image_files.append(image_out_path)
 
         print(f"✅ Image saved: {image_out_path}")
 
@@ -134,16 +137,67 @@ def generate_daily_chronicle_pair(event, index, generate_audio_tts):
 
         temp_image_files.append(placeholder_path)
         return
-        
-    # --- Create Video Clip ---
-    image_clip = ImageClip(image_out_path).set_duration(padded_audio_clip.duration).set_audio(padded_audio_clip)
 
-    # Track temp files
-    # audio_out_path already added by generate_audio_tts
-    video_clips.append(image_clip)
-    temp_image_files.append(image_out_path)
+    # --- Slide A (image left, text right) ---
+    img_np = np.array(image)
+    image_clip_left = (
+        ImageClip(img_np)
+        .set_duration(clip_1.duration)
+        .resize(width=960)
+        .set_position(("left", "center"))
+    )
 
-    print(f"✅ Event clip created — duration {padded_audio_clip.duration:.2f}s")
+    text_slide_1 = TextClip(
+        clip1_text,
+        fontsize=36,
+        color='black',
+        size=(960, 1080),
+        method='caption'
+    ).set_duration(clip_1.duration).set_position(("right", "center"))
+
+    slide_1 = CompositeVideoClip(
+        [
+            ColorClip(size=(1920, 1080), color=(255, 255, 255)).set_duration(clip_1.duration),
+            image_clip_left,
+            text_slide_1
+        ],
+        size=(1920, 1080)
+    ).set_audio(clip_1)
+
+    # --- Slide B (text left, image right) ---
+    image_clip_right = (
+        ImageClip(img_np)
+        .set_duration(clip_2.duration)
+        .resize(width=960)
+        .set_position(("right", "center"))
+    )
+
+    text_slide_2 = TextClip(
+        clip2_text,
+        fontsize=36,
+        color='black',
+        size=(960, 1080),
+        method='caption'
+    ).set_duration(clip_2.duration).set_position(("left", "center"))
+
+    slide_2 = CompositeVideoClip(
+        [
+            ColorClip(size=(1920, 1080), color=(255, 255, 255)).set_duration(clip_2.duration),
+            image_clip_right,
+            text_slide_2
+        ],
+        size=(1920, 1080)
+    ).set_audio(clip_2)
+
+    # --- Combine A → B with crossfade ---
+    full_event_clip = concatenate_videoclips(
+        [slide_1.crossfadeout(0.6), slide_2.crossfadein(0.6)],
+        method="compose"
+    )
+
+    video_clips.append(full_event_clip)
+
+    print(f"✅ Event clip created — duration {full_event_clip.duration:.2f}s")
 
 
 
