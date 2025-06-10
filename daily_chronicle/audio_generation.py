@@ -24,6 +24,7 @@ def wave_file(filename, channels=1, rate=24000, sample_width=2):
         yield wf
 
 # --- Audio generation using Live API ---
+# -- OLD FUNCTION -- needs to be rewritten if we want to use it
 def generate_audio_live(narration_text: str, desired_filename: str) -> str:
     collected_audio = bytearray()
 
