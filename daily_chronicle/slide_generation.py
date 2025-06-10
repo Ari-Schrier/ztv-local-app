@@ -101,7 +101,9 @@ def generate_daily_chronicle_pair(event, index, generate_audio_tts):
         config={
             "number_of_images": 1,
             "output_mime_type": "image/jpeg",
-            "aspect_ratio": "1:1"
+            "aspect_ratio": "1:1",
+            "safety_filter_level": "BLOCK_ONLY_HIGH",
+            "person_generation": "ALLOW_ADULT"
         }
     )
 
@@ -119,8 +121,20 @@ def generate_daily_chronicle_pair(event, index, generate_audio_tts):
 
     except Exception as e:
         print("❌ Image generation failed:", e)
-        return
 
+        # Add placeholder image path to maintain index alignment
+        placeholder_path = "resources/image_fail_placeholder.jpg"
+        if not os.path.exists(placeholder_path):
+            from PIL import Image, ImageDraw, ImageFont
+            img = Image.new("RGB", (1080, 1080), color=(255, 255, 255))
+            d = ImageDraw.Draw(img)
+            d.text((100, 500), "No image generated", fill=(0, 0, 0))
+            os.makedirs("resources", exist_ok=True)
+            img.save(placeholder_path)
+
+        temp_image_files.append(placeholder_path)
+        return
+        
     # --- Create Video Clip ---
     image_clip = ImageClip(image_out_path).set_duration(padded_audio_clip.duration).set_audio(padded_audio_clip)
 
