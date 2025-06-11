@@ -55,12 +55,12 @@ def main():
         reviewed_events = json.load(f)
 
     # --- Step 5: Generate image + audio assets + save paths ---
-    os.makedirs("temp", exist_ok=True)
+    os.makedirs("daily_chronicle/temp", exist_ok=True)
     temp_event_assets = []
     for idx, event in enumerate(reviewed_events):
         print(f"\n🖼️ Generating assets for event {idx + 1}/{len(reviewed_events)}...")
         image_path = generate_event_image(event, idx)
-        audio_path_1, audio_path_2 = generate_event_audio(event, idx)
+        audio_path_1, audio_path_2 = generate_event_audio(event, idx, generate_audio_tts)
         temp_event_assets.append({
             "event_index": idx,
             "image_path": image_path,
@@ -68,7 +68,7 @@ def main():
             "audio_path_2": audio_path_2
         })
     
-    temp_event_assets_filepath = f"temp/daily_chronicle_assets_{month}_{day}.json"
+    temp_event_assets_filepath = f"daily_chronicle/temp/daily_chronicle_assets_{month}_{day}.json"
     with open(temp_event_assets_filepath, "w") as f:
         json.dump(temp_event_assets, f, indent=2)
     
@@ -115,6 +115,6 @@ def main():
         cleanup_temp_files(temp_audio_files, temp_image_files)
         print("✅ Temporary files cleaned up.")
         print("\n🎬 Daily Chronicle completed successfully!")
-        
+
 if __name__ == "__main__":
     main()
