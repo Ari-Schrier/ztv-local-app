@@ -53,6 +53,8 @@ Events where identifiable children are in distress or harm
 If an important event has both tragic and positive aspects (e.g. a peace treaty after a war), you may cover the positive aspect only — but do not depict or describe graphic details.
 
 IMPORTANT: If an event cannot be presented in a safe and appropriate way for 6th-grade students (both in description and image), DO NOT include it. Choose a different event instead.
+Consider whether or not a service like Google's Imagen image generator would reject the image prompt you are creating. Aim to never create an image prompt that would be rejected by the
+Gemini API.
 
 🚫 EVENT SELECTION SAFETY RULES (IMPORTANT)
 
