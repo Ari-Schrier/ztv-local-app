@@ -50,11 +50,15 @@ class Worker(QRunnable):
 # --- ImageReviewWindow ---
 
 class ImageReviewWindow(QWidget):
-    def __init__(self, json_path, image_paths):
+    def __init__(self, event_json_filepath, event_assets_filepath):
         super().__init__()
 
-        self.json_path = json_path
-        self.image_paths = image_paths
+        self.event_json_filepath = event_json_filepath
+        self.event_assets_filepath = event_assets_filepath
+
+        with open(self.event_assets_filepath, "r") as f:
+            self.event_assets = json.load(f)
+
         self.events = self.load_events()
         self.index = 0
 
@@ -65,7 +69,7 @@ class ImageReviewWindow(QWidget):
         self.update_display()
 
     def load_events(self):
-        with open(self.json_path, "r") as f:
+        with open(self.event_json_filepath, "r") as f:
             data = json.load(f)
         if isinstance(data, list) and all(isinstance(event, dict) for event in data):
             return data
@@ -73,7 +77,7 @@ class ImageReviewWindow(QWidget):
             raise ValueError("Invalid JSON structure — expected flat list of event dicts.")
 
     def save_events(self):
-        with open(self.json_path, "w") as f:
+        with open(self.event_json_filepath, "w") as f:
             json.dump(self.events, f, indent=2)
 
     def init_ui(self):
@@ -163,37 +167,44 @@ class ImageReviewWindow(QWidget):
         self.setLayout(main_layout)
 
     def update_display(self):
-        if not self.image_paths:
+        if not self.event_assets:
             self.counter_label.setText("Image 0 of 0")
             self.clear_fields()
             return
 
         event = self.events[self.index]
-        image_path = self.image_paths[self.index]
+        image_path = self.event_assets[self.index]["image_path"]
 
-        self.counter_label.setText(f"Image {self.index + 1} of {len(self.image_paths)}")
+        self.counter_label.setText(f"Image {self.index + 1} of {len(self.event_assets)}")
 
         # Load image
+        pixmap = QPixmap()
         if image_path.startswith("http"):
-            pixmap = QPixmap()
-            pixmap.loadFromData(requests.get(image_path).content)
+            try:
+                pixmap.loadFromData(requests.get(image_path).content)
+            except Exception as e:
+                print(f"❌ Error loading image from URL: {image_path}\n{e}")
         elif os.path.exists(image_path):
             pixmap = QPixmap(image_path)
         else:
-            pixmap = QPixmap()
+            print(f"❌ Image path not found: {image_path}")
 
-        self.image_label.setPixmap(pixmap)
+        if pixmap.isNull():
+            print(f"❌ Failed to load image: {image_path}")
+            self.image_label.setText("Image failed to load")
+        else:
+            self.image_label.setPixmap(pixmap)
 
         # Load image prompt
         self.image_prompt_input.setPlainText(event.get("image_prompt", ""))
 
         # Enable/disable nav buttons
         self.prev_button.setEnabled(self.index > 0)
-        self.next_button.setEnabled(self.index < len(self.image_paths) - 1)
+        self.next_button.setEnabled(self.index < len(self.event_assets) - 1)
 
     def save_current_event(self):
-        event = self.events[self.index]
-        event["image_prompt"] = self.image_prompt_input.toPlainText()
+        if 0 <= self.index < len(self.events):
+            self.events[self.index]["image_prompt"] = self.image_prompt_input.toPlainText()
 
     def clear_fields(self):
         self.image_label.clear()
@@ -201,16 +212,18 @@ class ImageReviewWindow(QWidget):
 
     def on_prev(self):
         self.save_current_event()
-        self.index -= 1
+        if self.index > 0:
+            self.index -= 1
         self.update_display()
 
     def on_next(self):
         self.save_current_event()
-        self.index += 1
+        if self.index < len(self.event_assets) - 1:
+            self.index += 1
         self.update_display()
 
     def on_reject(self):
-        if not self.image_paths:
+        if not self.event_assets:
             return
         self.save_current_event()
         confirm = QMessageBox.question(
@@ -219,15 +232,17 @@ class ImageReviewWindow(QWidget):
         )
         if confirm == QMessageBox.Yes:
             del self.events[self.index]
-            del self.image_paths[self.index]
-            if self.index >= len(self.image_paths):
-                self.index = max(0, len(self.image_paths) - 1)
+            del self.event_assets[self.index]
+            if self.index >= len(self.event_assets):
+                self.index = max(0, len(self.event_assets) - 1)
             self.update_display()
 
     def on_save_and_exit(self):
         self.save_current_event()
         self.save_events()
-        QMessageBox.information(self, "Saved", "✅ Events saved.")
+        with open(self.event_assets_filepath, "w") as f:
+            json.dump(self.event_assets, f, indent=2)
+        QMessageBox.information(self, "Saved", "✅ Events and image paths saved.")
         self.close()
 
     # --- Threaded actions ---
@@ -254,8 +269,6 @@ class ImageReviewWindow(QWidget):
                 "number_of_images": 1,
                 "output_mime_type": "image/jpeg",
                 "aspect_ratio": "1:1",
-                "safety_filter_level": "BLOCK_ONLY_HIGH",
-                "person_generation": "ALLOW_ADULT"
             }
         )
 
@@ -279,7 +292,7 @@ class ImageReviewWindow(QWidget):
     def on_regen_result(self, image_path):
         if image_path:
             print(f"New image: {image_path}")
-            self.image_paths[self.index] = image_path
+            self.event_assets[self.index]["image_path"] = image_path
             self.update_display()
             QMessageBox.information(self, "Regenerate Complete", "New image generated.")
         else:
@@ -319,7 +332,7 @@ class ImageReviewWindow(QWidget):
                 save_path = os.path.join(save_dir, f"manual_image_{self.index + 1}.jpg")
                 img.save(save_path, format="JPEG")
 
-                self.image_paths[self.index] = save_path
+                self.event_assets[self.index]["image_path"] = save_path
                 self.update_display()
 
     def download_image_from_url(self, url):
@@ -339,14 +352,14 @@ class ImageReviewWindow(QWidget):
 
     def on_replace_result(self, image_path):
         print(f"Replaced with: {image_path}")
-        self.image_paths[self.index] = image_path
+        self.event_assets[self.index]["image_path"] = image_path
         self.update_display()
 
 # --- Main launcher for standalone testing ---
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    with open("temp/daily_chronicle_images_June_6.json", "r") as f:
-        image_paths = json.load(f)
-    window = ImageReviewWindow("outputs/daily_chronicle_June_6.json", image_paths)
+    event_json_path = "outputs/daily_chronicle_June_6.json"
+    event_assets_path = "daily_chronicle/temp/daily_chronicle_assets_June_6.json"
+    window = ImageReviewWindow(event_json_path, event_assets_path)
     window.show()
     sys.exit(app.exec())
