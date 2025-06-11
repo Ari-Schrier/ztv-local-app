@@ -4,6 +4,7 @@ from moviepy.audio.AudioClip import AudioArrayClip, CompositeAudioClip
 from PIL import Image
 from io import BytesIO
 import numpy as np
+from datetime import datetime
 
 from daily_chronicle.genai_client import client, IMAGE_MODEL_ID
 
@@ -225,8 +226,6 @@ def generate_event_image(event, index):
             "number_of_images": 1,
             "output_mime_type": "image/jpeg",
             "aspect_ratio": "1:1",
-            "safety_filter_level": "BLOCK_ONLY_HIGH",
-            "person_generation": "ALLOW_ADULT"
         }
     )
 
@@ -340,9 +339,13 @@ def build_event_segment(event, index, audio_paths, image_path):
 
     return full_event_clip
 
-def export_final_video(video_clips):
-    output_path = "output/daily_chronicle_final_video.mp4"
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+def export_final_video(video_clips, event_month: str, event_day: str):
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    event_label = f"{event_month}_{event_day}"
+    output_dir = "outputs"
+    os.makedirs(output_dir, exist_ok=True)
+
+    output_path = os.path.join(output_dir, f"daily_chronicle_{event_label}_{timestamp}.mp4")
 
     print(f"🎞️ Concatenating {len(video_clips)} video clips...")
 
