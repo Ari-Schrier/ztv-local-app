@@ -1,17 +1,25 @@
 import os
-from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips, CompositeVideoClip, ColorClip, TextClip
+from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips, CompositeVideoClip, ColorClip, TextClip, VideoFileClip
 from moviepy.audio.AudioClip import AudioArrayClip, CompositeAudioClip
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 from io import BytesIO
 import numpy as np
 from datetime import datetime
+import subprocess
 
 from daily_chronicle.genai_client import client, IMAGE_MODEL_ID
 
 # Global video clip + temp file trackers
-video_clips = []
+video_paths = []
 temp_audio_files = []
 temp_image_files = []
+
+VIDEO_WIDTH = 1920
+VIDEO_HEIGHT = 1080
+BLUR_STRENGTH = 200
+OVERLAY_OPACITY = 60
+SPACE_AROUND_IMAGE = 100
+FONT_PATH = "resources/HelveticaNeueMedium.otf"
 
 # --- Padding helper ---
 def pad_audio_with_silence(audio_clip, pre_duration=1.0, post_duration=2.0):
@@ -32,173 +40,52 @@ def pad_audio_with_silence(audio_clip, pre_duration=1.0, post_duration=2.0):
     return full_clip.set_duration(pre_duration + audio_clip.duration + post_duration)
 
 # --- Title slide generator ---
-def generate_title_slide(month, day, generate_audio_function):
-    text_content = f"What happened on {month} {day}? Let’s find out!!"
-    narration_text = text_content
+def generate_title_slide(month, day, generate_audio_function, image_paths=None):
+    title_content = f"The Daily Chronicle"
+    subtitle_content = f"{month} {day}"
+    narration_text = f"Welcome to the Daily Chronicle. Today, we will explore the historical events that occurred on {month} {day}. Let's find out what happened on this day in history."
     audio_path = generate_audio_function(narration_text, "title_narration.wav")
+    temp_audio_files.append(audio_path)
 
     clip_audio = AudioFileClip(audio_path)
 
     # Add silence (prepend and extend)
     padded_audio = pad_audio_with_silence(clip_audio)
 
+    if image_paths and os.path.exists(image_paths[0]):
+        first_image_path = image_paths[0]
+
     # Background
-    background = ColorClip(size=(1920, 1080), color=(255, 255, 255)).set_duration(padded_audio.duration)
+    background_image_left_logo = create_beautiful_background(first_image_path, image_pos="right", logo_pos=(70, 85))
+    background_clip_left_logo = ImageClip(np.array(background_image_left_logo))
 
-    # Left-side text
+    # Left-side title
     title_text = TextClip(
-        text_content.replace("? ", "?\n\n"),
-        fontsize=50,
-        color='black',
-        size=(960, 1080),
-        method='caption'
-    ).set_duration(padded_audio.duration).set_position(("left", "center"))
-
-    # Right-side icon
-    icon_bg = ColorClip(size=(960, 1080), color=(230, 230, 255)).set_duration(padded_audio.duration)
-    question_mark = TextClip(
-        "?",
-        fontsize=120,
-        color='black',
-        size=(960, 1080),
-        method='caption'
-    ).set_duration(padded_audio.duration).set_position("center")
-    icon = CompositeVideoClip([icon_bg, question_mark])
+        title_content,
+        fontsize=90,
+        font=FONT_PATH,
+        color='white',
+        method='label'
+    ).set_duration(padded_audio.duration).set_position((70, 200))
+    
+    # Left-side subtitle
+    subtitle_text = TextClip(
+        subtitle_content,
+        fontsize=85,
+        font=FONT_PATH,
+        color='white',
+        method='label'
+    ).set_duration(padded_audio.duration).set_position((70, 400))
 
     # Combine everything
     title_slide = CompositeVideoClip(
-        [background, title_text, icon.set_position(("right", "center"))],
+        [background_clip_left_logo, title_text, subtitle_text],
         size=(1920, 1080)
-    ).set_audio(padded_audio).fadein(0.5).fadeout(0.5)
+    ).set_duration(padded_audio.duration)
+    
+    title_slide = title_slide.set_audio(padded_audio).fadein(0.6).fadeout(0.6)
 
     return title_slide
-
-
-# --- Generate Event Pair ---
-def generate_daily_chronicle_pair(event, index, generate_audio_function):
-    from moviepy.editor import AudioFileClip, ImageClip
-    import os
-
-    clip1_text = f"{event['date_string']} {event['description']} {event['detail_1']}"
-    clip2_text = event["detail_2"]
-
-    print(f"🎙️ TTS: \"{clip1_text}\"")
-    audio_path_1 = generate_audio_function(clip1_text, f"audio_{index + 1}_slide1.wav")
-    print(f"🎙️ TTS: \"{clip2_text}\"")
-    audio_path_2 = generate_audio_function(clip2_text, f"audio_{index + 1}_slide2.wav")
-    temp_audio_files.extend([audio_path_1, audio_path_2])
-
-    raw_clip_1 = AudioFileClip(audio_path_1)
-    raw_clip_2 = AudioFileClip(audio_path_2)
-
-    clip_1 = pad_audio_with_silence(raw_clip_1, pre_duration=1.0, post_duration=2.0)
-    clip_2 = pad_audio_with_silence(raw_clip_2, pre_duration=1.0, post_duration=2.0)
-
-    # --- Image Generation ---
-    prompt = event["image_prompt"]
-    print(f"🖼️ Generating image: \"{prompt}\"")
-
-    result = client.models.generate_images(
-        model=IMAGE_MODEL_ID,
-        prompt=prompt,
-        config={
-            "number_of_images": 1,
-            "output_mime_type": "image/jpeg",
-            "aspect_ratio": "1:1",
-            "safety_filter_level": "BLOCK_ONLY_HIGH",
-            "person_generation": "ALLOW_ADULT"
-        }
-    )
-
-    try:
-        if not result.generated_images:
-            raise ValueError("No images were generated.")
-
-        image = Image.open(BytesIO(result.generated_images[0].image.image_bytes))
-
-        image_out_path = f"temp/temp_image_files/event_image_{index + 1}.jpg"
-        os.makedirs(os.path.dirname(image_out_path), exist_ok=True)
-        image.save(image_out_path, format="JPEG")
-        temp_image_files.append(image_out_path)
-
-        print(f"✅ Image saved: {image_out_path}")
-
-    except Exception as e:
-        print("❌ Image generation failed:", e)
-
-        # Add placeholder image path to maintain index alignment
-        placeholder_path = "resources/image_fail_placeholder.jpg"
-        if not os.path.exists(placeholder_path):
-            from PIL import Image, ImageDraw, ImageFont
-            img = Image.new("RGB", (1080, 1080), color=(255, 255, 255))
-            d = ImageDraw.Draw(img)
-            d.text((100, 500), "No image generated", fill=(0, 0, 0))
-            os.makedirs("resources", exist_ok=True)
-            img.save(placeholder_path)
-
-        temp_image_files.append(placeholder_path)
-        return
-
-    # --- Slide A (image left, text right) ---
-    img_np = np.array(image)
-    image_clip_left = (
-        ImageClip(img_np)
-        .set_duration(clip_1.duration)
-        .resize(width=960)
-        .set_position(("left", "center"))
-    )
-
-    text_slide_1 = TextClip(
-        clip1_text,
-        fontsize=36,
-        color='black',
-        size=(960, 1080),
-        method='caption'
-    ).set_duration(clip_1.duration).set_position(("right", "center"))
-
-    slide_1 = CompositeVideoClip(
-        [
-            ColorClip(size=(1920, 1080), color=(255, 255, 255)).set_duration(clip_1.duration),
-            image_clip_left,
-            text_slide_1
-        ],
-        size=(1920, 1080)
-    ).set_audio(clip_1)
-
-    # --- Slide B (text left, image right) ---
-    image_clip_right = (
-        ImageClip(img_np)
-        .set_duration(clip_2.duration)
-        .resize(width=960)
-        .set_position(("right", "center"))
-    )
-
-    text_slide_2 = TextClip(
-        clip2_text,
-        fontsize=36,
-        color='black',
-        size=(960, 1080),
-        method='caption'
-    ).set_duration(clip_2.duration).set_position(("left", "center"))
-
-    slide_2 = CompositeVideoClip(
-        [
-            ColorClip(size=(1920, 1080), color=(255, 255, 255)).set_duration(clip_2.duration),
-            image_clip_right,
-            text_slide_2
-        ],
-        size=(1920, 1080)
-    ).set_audio(clip_2)
-
-    # --- Combine A → B with crossfade ---
-    full_event_clip = concatenate_videoclips(
-        [slide_1.crossfadeout(0.6), slide_2.crossfadein(0.6)],
-        method="compose"
-    )
-
-    video_clips.append(full_event_clip)
-
-    print(f"✅ Event clip created — duration {full_event_clip.duration:.2f}s")
 
 def generate_event_audio(event, index, generate_audio_function):
     clip1_text = f"{event['date_string']} {event['description']} {event['detail_1']}"
@@ -235,7 +122,7 @@ def generate_event_image(event, index):
 
         image = Image.open(BytesIO(result.generated_images[0].image.image_bytes))
 
-        image_out_path = f"temp/temp_image_files/event_image_{index + 1}.jpg"
+        image_out_path = f"daily_chronicle/temp/temp_image_files/event_image_{index + 1}.jpg"
         os.makedirs(os.path.dirname(image_out_path), exist_ok=True)
         image.save(image_out_path, format="JPEG")
         temp_image_files.append(image_out_path)
@@ -248,16 +135,28 @@ def generate_event_image(event, index):
 
         # Add placeholder image path to maintain index alignment
         placeholder_path = "resources/image_fail_placeholder.jpg"
+        
         if not os.path.exists(placeholder_path):
-            from PIL import Image, ImageDraw, ImageFont
-            img = Image.new("RGB", (1080, 1080), color=(255, 255, 255))
-            d = ImageDraw.Draw(img)
-            d.text((100, 500), "No image generated", fill=(0, 0, 0))
             os.makedirs("resources", exist_ok=True)
-            img.save(placeholder_path)
 
-        temp_image_files.append(placeholder_path)
-        return placeholder_path
+            # Create a white image
+            img = Image.new("RGB", (1080, 1080), color=(255, 255, 255))
+            draw = ImageDraw.Draw(img)
+
+            # Use a larger, centered font
+            font_size = 80
+            font_path = FONT_PATH  # Path to the font file
+            font = ImageFont.truetype(font_path, font_size)
+            
+            message = "No image generated"
+            bbox = draw.textbbox((0, 0), message, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+            position = ((1080 - text_width) // 2, (1080 - text_height) // 2)
+
+            draw.text(position, message, fill=(100, 100, 100), font=font)
+
+            img.save(placeholder_path)
     
 def build_event_segment(event, index, audio_paths, image_path):
     """
@@ -265,69 +164,94 @@ def build_event_segment(event, index, audio_paths, image_path):
     Returns the video clip for the event.
     """
 
-    # --- Texts for Slides ---
-    clip1_text = f"{event['date_string']} {event['description']} {event['detail_1']}"
+    # Defensive check for missing image
+    if not image_path or not os.path.exists(image_path):
+        raise ValueError(f"❌ Invalid or missing image path for event {index + 1}: {image_path}")
+    
+    # Texts for Slides
+    clip1_toptext = f"{event['date_string']} {event['header_title']}"
+    clip1_centertext = f"{event['description']} {event['detail_1']}"
     clip2_text = event["detail_2"]
 
-    # Load audio clips
-    raw_clip_1 = AudioFileClip(audio_paths[0])
-    raw_clip_2 = AudioFileClip(audio_paths[1])
+    if audio_paths:
+        # Load audio clips
+        raw_clip_1 = AudioFileClip(audio_paths[0])
+        raw_clip_2 = AudioFileClip(audio_paths[1])
 
-    # Pad audio clips
-    padded_audio_1 = pad_audio_with_silence(raw_clip_1, pre_duration=1.0, post_duration=2.0)
-    padded_audio_2 = pad_audio_with_silence(raw_clip_2, pre_duration=1.0, post_duration=2.0)
+        # Pad audio clips
+        padded_audio_1 = pad_audio_with_silence(raw_clip_1, pre_duration=1.0, post_duration=2.0)
+        padded_audio_2 = pad_audio_with_silence(raw_clip_2, pre_duration=1.0, post_duration=2.0)
 
-        # --- Slide A (image left, text right) ---
-    image = Image.open(image_path)
-    img_np = np.array(image)
-    image_clip_left = (
-        ImageClip(img_np)
-        .set_duration(padded_audio_1.duration)
-        .resize(width=960)
-        .set_position(("left", "center"))
-    )
+    # Create background
+    background_image_left_logo = create_beautiful_background(image_path, image_pos="right", logo_pos=(70, 85))
+    background_image_right_logo = create_beautiful_background(image_path, image_pos="left", logo_pos=(1644, 85))
 
-    text_slide_1 = TextClip(
-        clip1_text,
-        fontsize=36,
-        color='black',
-        size=(960, 1080),
+    # Convert PIL Image to MoviePy ImageClip
+    background_clip_left_logo = ImageClip(np.array(background_image_left_logo))
+    background_clip_right_logo = ImageClip(np.array(background_image_right_logo))
+
+    # --- Slide A (image left, text right) ---
+    text_slide_1_top = TextClip(
+        clip1_toptext,
+        fontsize=60,
+        font=FONT_PATH,
+        color='white',
+        size=(770, None),
         method='caption'
-    ).set_duration(padded_audio_1.duration).set_position(("right", "center"))
+    ).set_duration(padded_audio_1.duration).set_position((70, 200))
+    
+    text_slide_1_center = TextClip(
+        clip1_centertext,
+        fontsize=48,
+        font=FONT_PATH,
+        color='white',
+        size=(770, None),
+        method='caption'
+    ).set_duration(padded_audio_1.duration).set_position((70, 500))
 
     slide_1 = CompositeVideoClip(
         [
-            ColorClip(size=(1920, 1080), color=(255, 255, 255)).set_duration(padded_audio_1.duration),
-            image_clip_left,
-            text_slide_1
+            background_clip_left_logo,
+            text_slide_1_top,
+            text_slide_1_center
         ],
         size=(1920, 1080)
-    ).set_audio(padded_audio_1)
+    ).set_audio(padded_audio_1).set_duration(padded_audio_1.duration)
 
     # --- Slide B (text left, image right) ---
-    image_clip_right = (
-        ImageClip(img_np)
-        .set_duration(padded_audio_2.duration)
-        .resize(width=960)
-        .set_position(("right", "center"))
-    )
-
     text_slide_2 = TextClip(
         clip2_text,
-        fontsize=36,
-        color='black',
-        size=(960, 1080),
+        fontsize=48,
+        font=FONT_PATH,
+        color='white',
+        size=(770, None),
         method='caption'
-    ).set_duration(padded_audio_2.duration).set_position(("left", "center"))
+    ).set_duration(padded_audio_2.duration).set_position((1080, 400))
 
     slide_2 = CompositeVideoClip(
         [
-            ColorClip(size=(1920, 1080), color=(255, 255, 255)).set_duration(padded_audio_2.duration),
-            image_clip_right,
+            background_clip_right_logo,
             text_slide_2
         ],
         size=(1920, 1080)
-    ).set_audio(padded_audio_2)
+    ).set_audio(padded_audio_2).set_duration(padded_audio_2.duration)
+
+    # --- Folder + Output path ---
+    temp_dir = "daily_chronicle/temp/temp_video_files"
+    os.makedirs(temp_dir, exist_ok=True)
+    output_path = os.path.join(temp_dir, f"event_{index + 1:02d}.mp4")
+
+    if not event.get("is_birthday", False):
+        # Define PNG output paths
+        png_a = os.path.join(temp_dir, f"event_{index + 1:02d}_A.png")
+        png_b = os.path.join(temp_dir, f"event_{index + 1:02d}_B.png")
+        temp_image_files.extend([png_a, png_b])
+
+        slide_1.save_frame(png_a, t=0)
+        slide_2.save_frame(png_b, t=0)
+
+        slide_1 = ImageClip(png_a).set_duration(padded_audio_1.duration).set_audio(padded_audio_1)
+        slide_2 = ImageClip(png_b).set_duration(padded_audio_2.duration).set_audio(padded_audio_2)
 
     # --- Combine A → B with crossfade ---
     full_event_clip = concatenate_videoclips(
@@ -335,9 +259,64 @@ def build_event_segment(event, index, audio_paths, image_path):
         method="compose"
     )
 
-    print(f"✅ Event clip created — duration {full_event_clip.duration:.2f}s")
+    # --- Write to .mp4 and return VideoFileClip ---
+    full_event_clip.write_videofile(output_path, fps=24, codec="libx264", audio_codec="aac", verbose=False, logger=None)
 
-    return full_event_clip
+    print(f"✅ Event clip created — duration {full_event_clip.duration:.2f}s")
+    print(f"✅ Event clip saved → {output_path}")
+
+    return output_path
+
+def create_beautiful_background(image_path, logo_pos=(70, 85), image_pos="left"):
+    with Image.open(image_path) as image:
+        # Adjust aspect ratio
+        image_ratio = image.width / image.height
+        target_ratio = VIDEO_WIDTH / VIDEO_HEIGHT
+        if image_ratio > target_ratio:
+            new_width = int(image.height * target_ratio)
+            offset = (image.width - new_width) // 2
+            cropped_image = image.crop((offset, 0, offset + new_width, image.height))
+        else:
+            new_height = int(image.width / target_ratio)
+            offset = (image.height - new_height) // 2
+            cropped_image = image.crop((0, offset, image.width, offset + new_height))
+
+        # Resize to 1920x1080
+        resized_image = cropped_image.resize((VIDEO_WIDTH, VIDEO_HEIGHT), Image.LANCZOS)
+
+        # Add scrim overlay
+        overlay = Image.new('RGBA', resized_image.size, (0, 0, 0, int((OVERLAY_OPACITY / 100) * 255)))
+        image_with_scrim = Image.alpha_composite(resized_image.convert('RGBA'), overlay)
+
+        # Apply blur
+        final_background = image_with_scrim.filter(ImageFilter.GaussianBlur(radius=BLUR_STRENGTH))
+
+        # Ensure image is square with rounded edges
+        image_size = 1080 - 2*SPACE_AROUND_IMAGE
+        image = image.resize((image_size, image_size), Image.LANCZOS)
+
+        # Create a mask for rounded corners
+        mask = Image.new('L', image.size, 0)
+        draw = ImageDraw.Draw(mask)
+        draw.rounded_rectangle([0, 0, image_size, image_size], radius=50, fill=255)
+
+        # Apply the rounded mask to the image
+        image_with_rounded_corners = Image.new('RGBA', image.size)
+        image_with_rounded_corners.paste(image, (0, 0), mask=mask)
+
+        # Position the image on the appropriate side of the video frame
+        if image_pos == "right":
+            image_position = (VIDEO_WIDTH - image_with_rounded_corners.width - SPACE_AROUND_IMAGE, SPACE_AROUND_IMAGE)  # Adjust positioning as necessary
+        else:
+            image_position = (SPACE_AROUND_IMAGE, SPACE_AROUND_IMAGE)
+
+        final_background.paste(image_with_rounded_corners, image_position, image_with_rounded_corners)
+
+        # Add watermark
+        watermark = Image.open("resources/logo_small.png")
+        final_background.paste(watermark, logo_pos, watermark)
+
+        return final_background
 
 def export_final_video(video_clips, event_month: str, event_day: str):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -345,7 +324,19 @@ def export_final_video(video_clips, event_month: str, event_day: str):
     output_dir = "outputs"
     os.makedirs(output_dir, exist_ok=True)
 
-    output_path = os.path.join(output_dir, f"daily_chronicle_{event_label}_{timestamp}.mp4")
+    # Add the end credits to the list of video clips
+    end_credits_path = "resources/endcredits_silent.mp4"
+    if os.path.exists(end_credits_path):
+        end_credits_clip = VideoFileClip(end_credits_path)
+        video_clips.append(end_credits_clip)
+        print(f"🎞️ Added end credits: {end_credits_path}")
+    else:
+        print(f"⚠️ End credits file not found: {end_credits_path}")
+
+    for clip in video_clips:
+        print(f"Clip resolution: {clip.size}, FPS: {clip.fps}")
+
+    output_path = os.path.join(output_dir, f"{event_label}_{timestamp}.mp4")
 
     print(f"🎞️ Concatenating {len(video_clips)} video clips...")
 
@@ -354,7 +345,52 @@ def export_final_video(video_clips, event_month: str, event_day: str):
 
     return output_path
 
-def cleanup_temp_files(temp_audio_files, temp_image_files):
+def export_final_video_ffmpeg(video_paths, event_month: str, event_day: str):
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    event_label = f"{event_month}_{event_day}"
+    output_dir = "outputs"
+    os.makedirs(output_dir, exist_ok=True)
+
+    concat_txt_path = os.path.join(output_dir, f"{event_label}_concat_list.txt")
+    output_video_path = os.path.join(output_dir, f"{event_label}_{timestamp}.mp4")
+
+    # Include end credits if they exist
+    end_credits_path = "resources/endcredits_silent.mp4"
+    if os.path.exists(end_credits_path):
+        video_paths.append(end_credits_path)
+        print(f"🎞️ Added end credits: {end_credits_path}")
+    else:
+        print("⚠️ No end credits found")
+
+    # Create the .txt file for ffmpeg concat
+    with open(concat_txt_path, "w") as f:
+        for path in video_paths:
+            f.write(f"file '{os.path.abspath(path)}'\n")
+
+    # Run ffmpeg concat
+    ffmpeg_cmd = [
+            "ffmpeg",
+            "-f", "concat",
+            "-safe", "0",
+            "-i", concat_txt_path,
+            "-c:v", "libx264",
+            "-r", "24",                 # enforce consistent framerate
+            "-c:a", "aac",
+            "-b:a", "192k",
+            output_video_path
+        ]
+
+    print(f"🚀 Running ffmpeg to concat {len(video_paths)} files...")
+    subprocess.run(ffmpeg_cmd, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+
+    print(f"✅ Final video saved to: {output_video_path}")
+
+    # remove end credits from video_paths to avoid destroying the mp4
+    video_paths.remove(end_credits_path)
+
+    return output_video_path
+
+def cleanup_temp_files(temp_audio_files, temp_image_files, temp_video_files, temp_json_files):
     def safe_remove(path):
         try:
             if os.path.exists(path):
@@ -368,4 +404,12 @@ def cleanup_temp_files(temp_audio_files, temp_image_files):
 
     print("🧹 Cleaning up temp image files...")
     for path in temp_image_files:
+        safe_remove(path)
+
+    print("🧹 Cleaning up temp video files...")
+    for path in temp_video_files:
+        safe_remove(path)
+
+    print("🧹 Cleaning up temp JSON files...")
+    for path in temp_json_files:
         safe_remove(path)
