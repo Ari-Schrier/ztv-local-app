@@ -19,6 +19,8 @@ from .img_utils import crop_center
 from io import BytesIO
 from PIL import Image
 
+from daily_chronicle.slide_generation import temp_image_files
+
 # --- Worker classes ---
 
 class WorkerSignals(QObject):
@@ -173,34 +175,48 @@ class ImageReviewWindow(QWidget):
             return
 
         event = self.events[self.index]
-        image_path = self.event_assets[self.index]["image_path"]
+        image_path = self.event_assets[self.index].get("image_path")
 
+        # --- Always update prompt and label ---
         self.counter_label.setText(f"Image {self.index + 1} of {len(self.event_assets)}")
-
-        # Load image
-        pixmap = QPixmap()
-        if image_path.startswith("http"):
-            try:
-                pixmap.loadFromData(requests.get(image_path).content)
-            except Exception as e:
-                print(f"❌ Error loading image from URL: {image_path}\n{e}")
-        elif os.path.exists(image_path):
-            pixmap = QPixmap(image_path)
-        else:
-            print(f"❌ Image path not found: {image_path}")
-
-        if pixmap.isNull():
-            print(f"❌ Failed to load image: {image_path}")
-            self.image_label.setText("Image failed to load")
-        else:
-            self.image_label.setPixmap(pixmap)
-
-        # Load image prompt
         self.image_prompt_input.setPlainText(event.get("image_prompt", ""))
 
-        # Enable/disable nav buttons
+        # --- Load image or fallback to placeholder ---
+        pixmap = QPixmap()
+
+        if image_path:
+            if image_path.startswith("http"):
+                try:
+                    pixmap.loadFromData(requests.get(image_path).content)
+                except Exception as e:
+                    print(f"❌ Error loading image from URL: {image_path}\n{e}")
+            elif os.path.exists(image_path):
+                pixmap = QPixmap(image_path)
+            else:
+                print(f"❌ Image file does not exist: {image_path}")
+        else:
+            print(f"❌ No image path for event {self.index + 1}")
+
+        # --- Fallback to placeholder if needed ---
+        if pixmap.isNull():
+            print("⚠️ Loading placeholder image")
+            placeholder_path = "resources/image_fail_placeholder.jpg"
+            if os.path.exists(placeholder_path):
+                pixmap = QPixmap(placeholder_path)
+            else:
+                self.image_label.setText("⚠️ Failed to load placeholder image.")
+                pixmap = None
+
+        # --- Update image preview ---
+        if pixmap and not pixmap.isNull():
+            self.image_label.setPixmap(pixmap)
+        elif not pixmap:
+            self.image_label.setText("⚠️ No valid image to display.")
+
+        # --- Enable/disable navigation buttons ---
         self.prev_button.setEnabled(self.index > 0)
         self.next_button.setEnabled(self.index < len(self.event_assets) - 1)
+
 
     def save_current_event(self):
         if 0 <= self.index < len(self.events):
@@ -278,10 +294,13 @@ class ImageReviewWindow(QWidget):
 
             image = Image.open(BytesIO(result.generated_images[0].image.image_bytes))
 
-            save_dir = "temp/temp_image_files"
+            save_dir = "daily_chronicle/temp/temp_image_files"
             os.makedirs(save_dir, exist_ok=True)
             save_path = os.path.join(save_dir, f"regen_image_{self.index + 1}.jpg")
             image.save(save_path, format="JPEG")
+
+            # Add to cleanup list
+            temp_image_files.append(save_path)
 
             return save_path
 
@@ -327,10 +346,13 @@ class ImageReviewWindow(QWidget):
                 img = Image.open(file_path).convert("RGB")
                 img = crop_center(img)
 
-                save_dir = "temp/temp_image_files"
+                save_dir = "daily_chronicle/temp/temp_image_files"
                 os.makedirs(save_dir, exist_ok=True)
                 save_path = os.path.join(save_dir, f"manual_image_{self.index + 1}.jpg")
                 img.save(save_path, format="JPEG")
+
+                # Add to cleanup list
+                temp_image_files.append(save_path)
 
                 self.event_assets[self.index]["image_path"] = save_path
                 self.update_display()
@@ -343,7 +365,7 @@ class ImageReviewWindow(QWidget):
         img = Image.open(BytesIO(response.content)).convert("RGB")
         img = crop_center(img)
 
-        save_dir = "temp/temp_image_files"
+        save_dir = "daily_chronicle/temp/temp_image_files"
         os.makedirs(save_dir, exist_ok=True)
         save_path = os.path.join(save_dir, f"manual_image_{self.index + 1}.jpg")
         img.save(save_path, format="JPEG")
