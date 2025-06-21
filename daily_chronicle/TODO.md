@@ -18,13 +18,14 @@
 
 ### 1️⃣ Test Full End-to-End CLI Run
 
-- [ ] Run `python daily_chronicle/main.py`
-- [ ] Verify:
-    - [ ] Event JSON saved
-    - [ ] Images generated correctly
-    - [ ] Audio generated correctly
-    - [ ] Video written correctly
-    - [ ] Temporary files cleaned up
+- [x] Run `python daily_chronicle/main.py`
+- [x] Verify:
+    - [x] Event JSON saved
+    - [x] 16 events are generated (not just 12)
+    - [x] Images generated correctly
+    - [x] Audio generated correctly
+    - [x] Video written correctly
+    - [x] Temporary files cleaned up
 
 ---
 
@@ -32,12 +33,10 @@
 
 **After initial event JSON is generated:**
 
-- [ ] Add interactive CLI (or GUI) to:
-    - [ ] Reject an event
-    - [ ] Regenerate an event
-    - [ ] Edit wording of an event or image_prompt
+- [x] Reject an event
+- [x] Edit wording of an event or image_prompt
 
-**This occurs before image generation.**
+✅ Complete for now — see standing questions re: regeneration
 
 ---
 
@@ -45,48 +44,65 @@
 
 **After images are generated:**
 
-- [ ] Add interactive GUI to:
-    - [ ] Regenerate an image
-    - [ ] Replace an image (file picker or URL)
-    - [ ] Reject event entirely
+- [x] Regenerate an image
+- [x] Replace an image (file picker or URL)
+- [x] Reject event entirely (e.g., from 16 generated, only accept best 12)
+- [x] Save reduced set of events to final event JSON
 
 ---
 
-### 4️⃣ Prompt Template Update
+### 4️⃣ Prompt & Content Tuning
 
-- [ ] Ensure that **1 of the 12 events is a famous person's birthday**.
-    - [ ] Update `EVENT_GENERATION_PROMPT_TEMPLATE` to reflect this rule.
-
----
-
-### 5️⃣ Speed Up MoviePy
-
-- [ ] Implement **raw ffmpeg calls** for final video concatenation (replace MoviePy `concatenate_videoclips` where possible).
-    - [ ] Research optimal `ffmpeg` concat pipeline.
-    - [ ] Benchmark speed vs. current MoviePy.
+- [ ] Update `EVENT_GENERATION_PROMPT_TEMPLATE`:
+    - [x] Ensure **1 of the 12 events is a famous birthday**
+    - [x] Prompt-tune to **4th grade reading level** (currently tuned to 6th grade)
+    - [x] Explicitly **discourage duplicate events**
+- [ ] Make birthday events visually distinct:
+    - [ ] Add overlay: 🎉 confetti, 🎈 balloons, or a 🎂 banner
+    - [ ] (Optional) Animated confetti with MoviePy or overlay frame
 
 ---
 
-### 6️⃣ Polish / Finalization
+### 5️⃣ Speed & Optimization
 
-- [ ] Improve video styling (fonts, pacing, transitions)
-- [ ] Switch from Gemini Live API → Gemini **TTS API** for faster, cheaper, more controllable voice.
-- [ ] Save final event JSON alongside video output.
-
----
-
-### Stretch Ideas
-
-- [ ] Add CLI argument to choose output format
-- [ ] Add CLI progress bar (e.g. tqdm)
+- [x] Replace MoviePy `concatenate_videoclips` with optimized `ffmpeg` calls
+    - [x] Research and implement `.txt`-based concat list
+    - [x] Benchmark speed vs. current flow (target: <10 mins total runtime)
 
 ---
 
-## 🎉 Notes
+### 6️⃣ Code Quality & Readability
 
-- This project is now structured like **a real production Python app**.
-- Easy to add **unit tests**, **CI/CD**, and **Docker** later if needed.
-- The goal is to make the pipeline **fully auditable, editable, and reviewable by humans**.
+- [ ] Add docstrings and inline comments for all major functions
+- [ ] Improve readability across all modules
 
 ---
 
+### 7️⃣ Add OpenAI API Support (Optional/Fallback)
+
+- [ ] Add support for OpenAI TTS via API key
+- [ ] Add support for OpenAI image generation via API key
+- [ ] Allow toggling Gemini vs OpenAI via config or CLI flag
+
+---
+
+### 8️⃣ Polish & UX Improvements
+
+- [x] Improve video styling (typography, transitions, and pacing)
+- [x] Save final reviewed `event.json` with the output `.mp4`
+- [x] Image fail placeholder text needs to be notched down
+- [x] Tune voice delivery:
+    - [x] More **professorial**, **slower**, and in **lower vocal register**
+- [x] Events should appear in **chronological order**, not generation order
+
+---
+
+## 🧠 Standing Questions
+
+- Do we want the ability to **regenerate an event** at the first review checkpoint (JSON editing)?
+
+---
+
+## 🌱 Stretch Goals
+
+- [ ] Build Docker container for local + cloud runs
