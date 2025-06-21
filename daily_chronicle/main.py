@@ -9,7 +9,7 @@ import os
 
 from PySide6.QtWidgets import QApplication
 
-NUM_EVENTS = 12  # Number of events to generate
+NUM_EVENTS = 16  # Number of events to generate
 
 def main():
     print("📅 Welcome to the Daily Chronicle Generator!")
@@ -36,7 +36,7 @@ def main():
 
     # --- Save event JSON ---
     os.makedirs("outputs", exist_ok=True)
-    event_json_filepath = f"outputs/daily_chronicle_{month}_{day}.json"
+    event_json_filepath = f"outputs/{month}_{day}_events.json"
     with open(event_json_filepath, "w") as f:
         json.dump(events, f, indent=2)
     print(f"✅ Saved event JSON to {event_json_filepath}")
@@ -68,7 +68,8 @@ def main():
             "audio_path_2": audio_path_2
         })
     
-    temp_event_assets_filepath = f"daily_chronicle/temp/daily_chronicle_assets_{month}_{day}.json"
+    temp_event_assets_filepath = f"daily_chronicle/temp/{month}_{day}_assets.json"
+    temp_json_files = [temp_event_assets_filepath]
     with open(temp_event_assets_filepath, "w") as f:
         json.dump(temp_event_assets, f, indent=2)
     
@@ -88,11 +89,20 @@ def main():
     with open(temp_event_assets_filepath, "r") as f:
         reviewed_assets = json.load(f)
 
+    # Extract the first image path from the reviewed assets
+    first_image_path = [
+        event["image_path"]
+        for event in reviewed_assets[:1]  # Get the first event
+        if "image_path" in event and event["image_path"]  # Ensure the key exists and is not empty
+    ]
+
     # --- Step 8: Generate video slides ---
     print("\n🎬 Assembling final video...")
 
-    title_slide = generate_title_slide(month, day, generate_audio_tts)
-    video_clips.append(title_slide)
+    title_slide = generate_title_slide(month, day, generate_audio_tts, first_image_path)
+    title_path = "daily_chronicle/temp/temp_video_files/title_slide.mp4"
+    title_slide.write_videofile(title_path, fps=24, codec="libx264", audio_codec="aac", verbose=False, logger=None)
+    video_paths.append(title_path)
 
     for asset in reviewed_assets:
         idx = asset["event_index"]
@@ -102,17 +112,17 @@ def main():
         audio_paths = (asset["audio_path_1"], asset["audio_path_2"])
         image_path = asset["image_path"]
 
-        event_segment = build_event_segment(event, idx, audio_paths, image_path)
-        video_clips.append(event_segment)
+        event_video_path = build_event_segment(event, idx, audio_paths, image_path)
+        video_paths.append(event_video_path)
 
     # --- Step 9: Export final video ---
     print("\n🚀 Exporting final video...")
     try:
-        output_path = export_final_video(video_clips)
+        output_path = export_final_video_ffmpeg(video_paths, month, day)
         print(f"\n🎉 Done! Video exported to: {output_path}")
     finally:
         print("\n🧹 Cleaning up temporary files...")
-        cleanup_temp_files(temp_audio_files, temp_image_files)
+        cleanup_temp_files(temp_audio_files, temp_image_files, video_paths, temp_json_files)
         print("✅ Temporary files cleaned up.")
         print("\n🎬 Daily Chronicle completed successfully!")
 
