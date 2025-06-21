@@ -70,25 +70,33 @@ def generate_audio_live(narration_text: str, desired_filename: str) -> str:
 # --- Audio generation using Gemini TTS API ---
 def generate_audio_tts(narration_text: str, desired_filename: str) -> str:
     from google.genai import types
-
-    # Speech generation using generate_content()
-    # Model: models/gemini-2.5-flash-preview-tts or models/gemini-2.5-pro-preview-tts
     
     response = client.models.generate_content(
-        model=AUDIO_MODEL_ID,  # e.g. "models/gemini-2.5-flash-preview-tts"
-        contents=narration_text,  # Now pass string directly, not [{"role": ..., "parts": ...}]
+        model=AUDIO_MODEL_ID,
+        contents=f'''
+        TTS the following text, speaking in a professorial, firm, and informative tone, at a comfortable, non-rushed pace, as a narrator for an educational video:
+        {narration_text}
+        ''',
         config=types.GenerateContentConfig(
             response_modalities=["AUDIO"],
             speech_config=types.SpeechConfig(
                 voice_config=types.VoiceConfig(
                     prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                        voice_name='Kore',  # You can change this later if you want
+                        voice_name='Orus',
                     )
                 ),
             ),
         )
     )
-    
+
+    '''
+    # Fallback guard
+    try:
+        parts = response.candidates[0].content.parts
+    except (AttributeError, IndexError, TypeError):
+        raise ValueError(f"❌ TTS generation failed for text: '{narration_text}'")
+    '''
+        
     # Extract audio bytes
     audio_bytes = response.candidates[0].content.parts[0].inline_data.data
     
