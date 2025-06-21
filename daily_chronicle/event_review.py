@@ -40,7 +40,7 @@ class EventReviewWindow(QWidget):
         instructions = QLabel(
             "Instructions:\n"
             "- Review each event.\n"
-            "- You may edit Description, Details, Image Prompt, and Audio Text.\n"
+            "- You may edit Header Title, Description, Details, Image Prompt, and Audio Text.\n"
             "- 'Previous' and 'Next' navigate events.\n"
             "- 'Reject Event' removes an event.\n"
             "- 'Save and Close' saves the JSON and closes this window.\n"
@@ -63,6 +63,11 @@ class EventReviewWindow(QWidget):
         self.date_string_input.setReadOnly(True)
         form_layout.addRow("Date:", self.date_string_input)
 
+        self.header_title_input = QTextEdit()
+        self.header_title_input.setMinimumWidth(600)
+        self.header_title_input.setFixedHeight(50)
+        form_layout.addRow("Header Title:", self.header_title_input)
+        
         self.description_input = QTextEdit()
         self.description_input.setMinimumWidth(600)
         self.description_input.setFixedHeight(50)
@@ -124,6 +129,7 @@ class EventReviewWindow(QWidget):
 
         # Populate fields
         self.date_string_input.setText(event.get("date_string", ""))
+        self.header_title_input.setPlainText(event.get("header_title", ""))
         self.description_input.setPlainText(event.get("description", ""))
         self.detail_1_input.setPlainText(event.get("detail_1", ""))
         self.detail_2_input.setPlainText(event.get("detail_2", ""))
@@ -137,6 +143,7 @@ class EventReviewWindow(QWidget):
     def save_current_event(self):
         event = {
             "date_string": self.date_string_input.text(),
+            "header_title": self.header_title_input.toPlainText(),
             "description": self.description_input.toPlainText(),
             "detail_1": self.detail_1_input.toPlainText(),
             "detail_2": self.detail_2_input.toPlainText(),
@@ -147,6 +154,7 @@ class EventReviewWindow(QWidget):
 
     def clear_fields(self):
         self.date_string_input.clear()
+        self.header_title_input.clear()
         self.description_input.clear()
         self.detail_1_input.clear()
         self.detail_2_input.clear()
