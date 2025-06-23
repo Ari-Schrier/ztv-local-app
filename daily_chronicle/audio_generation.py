@@ -5,6 +5,7 @@ import wave
 import asyncio
 import contextlib
 from google import genai
+import openai
 from daily_chronicle.genai_client import client, TEXT_MODEL, IMAGE_MODEL_ID, AUDIO_MODEL_ID
 
 # --- Temp storage directory setup ---
@@ -68,7 +69,7 @@ def generate_audio_live(narration_text: str, desired_filename: str) -> str:
     return output_path
 
 # --- Audio generation using Gemini TTS API ---
-def generate_audio_tts(narration_text: str, desired_filename: str) -> str:
+def generate_tts_gemini(narration_text: str, desired_filename: str) -> str:
     from google.genai import types
     
     response = client.models.generate_content(
@@ -113,4 +114,26 @@ def generate_audio_tts(narration_text: str, desired_filename: str) -> str:
     # Track temp file
     temp_audio_files.append(output_path)
 
+    return output_path
+
+def generate_tts_openai(narration_text: str, desired_filename: str) -> str:
+    client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+    instructions = """🎙️ Historical Event Curator – Voice Profile\n\nAffect:\nThoughtful and composed. Each word feels carefully chosen, as if revealing something meaningful. Speaks with quiet reverence for the past, inviting the listener to pause and reflect.\n\nTone:\nWarm, scholarly, and respectful. Never dry — always engaged. Holds a quiet passion for history, communicated through subtle inflection and sincerity.\n\nPacing:\nDeliberate and slow.\nAllows time for the listener to absorb each detail. Natural pauses after dates, names, or pivotal phrases help orient the listener in time and meaning. Never rushed.\n\nEmotions:\nCalm curiosity.\nA gentle sense of awe at the unfolding of history. Occasionally tinged with solemnity or admiration, depending on the gravity of the moment.\n\nPronunciation:\nClear and articulate.\nDates, places, and names are given special care. The delivery avoids contractions and slang, leaning into a formal but approachable style.\n\nPauses:\n\nAfter dates: to signal a historical moment.\n\nBefore an"""
+
+    # Generate TTS using OpenAI's API
+    response = client.audio.speech.create(
+        model="gpt-4o-mini-tts",
+        voice="echo",  # Specify the voice configuration
+        instructions = instructions,
+        input=narration_text,
+        response_format="wav",  # Specify the response format
+    )
+
+    # Save audio bytes directly
+    output_path = os.path.join(TEMP_AUDIO_DIR, desired_filename)
+    with open(output_path, "wb") as f:
+        f.write(response.content)
+
+    temp_audio_files.append(output_path)
     return output_path
