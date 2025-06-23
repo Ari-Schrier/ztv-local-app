@@ -1,17 +1,25 @@
 # daily_chronicle/main.py
 
-from daily_chronicle.generator import generate_event_sequence
+from daily_chronicle.generator import generate_events, generate_events_gemini, generate_events_openai
 from daily_chronicle.slide_generation import *
-from daily_chronicle.audio_generation import generate_audio_tts
+from daily_chronicle.audio_generation import generate_tts_gemini, generate_tts_openai
 from daily_chronicle.event_review import EventReviewWindow
 import json
 import os
+from dotenv import load_dotenv
 
 from PySide6.QtWidgets import QApplication
 
-NUM_EVENTS = 16  # Number of events to generate
+NUM_EVENTS = 3  # Number of events to generate
+
+IMAGE_FUNCTION = generate_image_gemini
+TTS_FUNCTION = generate_tts_gemini
+EVENT_FUNCTION = generate_events_gemini
 
 def main():
+    
+    load_dotenv()
+
     print("📅 Welcome to the Daily Chronicle Generator!")
     
     # --- Step 1: Get user input ---
@@ -28,7 +36,7 @@ def main():
 
     # --- Step 2: Generate events ---
     print("\n🧠 Generating events...")
-    events = generate_event_sequence(month, day, NUM_EVENTS)
+    events = generate_events(month, day, NUM_EVENTS, EVENT_FUNCTION)
 
     if not events or not isinstance(events, list):
         print("❌ No events were generated. Exiting.")
@@ -59,8 +67,8 @@ def main():
     temp_event_assets = []
     for idx, event in enumerate(reviewed_events):
         print(f"\n🖼️ Generating assets for event {idx + 1}/{len(reviewed_events)}...")
-        image_path = generate_event_image(event, idx)
-        audio_path_1, audio_path_2 = generate_event_audio(event, idx, generate_audio_tts)
+        image_path = generate_event_image(event, idx, IMAGE_FUNCTION)
+        audio_path_1, audio_path_2 = generate_event_audio(event, idx, TTS_FUNCTION)
         temp_event_assets.append({
             "event_index": idx,
             "image_path": image_path,
@@ -99,7 +107,7 @@ def main():
     # --- Step 8: Generate video slides ---
     print("\n🎬 Assembling final video...")
 
-    title_slide = generate_title_slide(month, day, generate_audio_tts, first_image_path)
+    title_slide = generate_title_slide(month, day, TTS_FUNCTION, first_image_path)
     title_path = "daily_chronicle/temp/temp_video_files/title_slide.mp4"
     title_slide.write_videofile(title_path, fps=24, codec="libx264", audio_codec="aac", verbose=False, logger=None)
     video_paths.append(title_path)
