@@ -48,6 +48,7 @@
 - [x] Replace an image (file picker or URL)
 - [x] Reject event entirely (e.g., from 16 generated, only accept best 12)
 - [x] Save reduced set of events to final event JSON
+- [ ] Add progress spinner while regenerating images
 
 ---
 
@@ -57,9 +58,7 @@
     - [x] Ensure **1 of the 12 events is a famous birthday**
     - [x] Prompt-tune to **4th grade reading level** (currently tuned to 6th grade)
     - [x] Explicitly **discourage duplicate events**
-- [ ] Make birthday events visually distinct:
-    - [ ] Add overlay: 🎉 confetti, 🎈 balloons, or a 🎂 banner
-    - [ ] (Optional) Animated confetti with MoviePy or overlay frame
+    - [ ] Evaluate: should **image_prompt enhancement** be part of initial generation or a separate postprocessing step?
 
 ---
 
@@ -75,14 +74,15 @@
 
 - [ ] Add docstrings and inline comments for all major functions
 - [ ] Improve readability across all modules
+- [ ] Use `pathlib` instead of `os.path` for cross-platform compatibility
 
 ---
 
 ### 7️⃣ Add OpenAI API Support (Optional/Fallback)
 
-- [ ] Add support for OpenAI TTS via API key
-- [ ] Add support for OpenAI image generation via API key
-- [ ] Allow toggling Gemini vs OpenAI via config or CLI flag
+- [x] Add support for OpenAI TTS via API key
+- [x] Add support for OpenAI image generation via API key
+- [x] Allow toggling Gemini vs OpenAI via config or CLI flag
 
 ---
 
@@ -97,12 +97,24 @@
 
 ---
 
+### 9️⃣ Packaging for Non-Technical Users
+
+- [ ] Create GUI frontend for easier use (PySide6/Tkinter)
+- [ ] Route CLI stdout into scrollable textbox for debugging/log display
+- [ ] Use **PyInstaller** to package the app as:
+    - [ ] `.exe` on Windows (via Parallels)
+    - [ ] `.app` on macOS
+- [ ] Provide a clickable desktop icon or shortcut (e.g. via batch script or `.app` wrapper)
+
+---
+
 ## 🧠 Standing Questions
 
-- Do we want the ability to **regenerate an event** at the first review checkpoint (JSON editing)?
+- Should image prompts be enhanced during generation or via a separate enhancement function?
+- Would birthday events benefit from a subtle animated confetti effect?
 
 ---
 
 ## 🌱 Stretch Goals
 
-- [ ] Build Docker container for local + cloud runs
+- [ ] Birthday event: add celebratory confetti animation over slides
