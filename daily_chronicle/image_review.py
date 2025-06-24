@@ -4,7 +4,7 @@ import sys
 import json
 import traceback
 import requests
-import os
+from pathlib import Path
 
 from PySide6.QtCore import (
     QObject, QRunnable, QThreadPool, Signal, Slot
@@ -52,13 +52,13 @@ class Worker(QRunnable):
 # --- ImageReviewWindow ---
 
 class ImageReviewWindow(QWidget):
-    def __init__(self, event_json_filepath, event_assets_filepath):
+    def __init__(self, event_json_filepath: Path, event_assets_filepath: Path):
         super().__init__()
 
         self.event_json_filepath = event_json_filepath
         self.event_assets_filepath = event_assets_filepath
 
-        with open(self.event_assets_filepath, "r") as f:
+        with self.event_assets_filepath.open("r") as f:
             self.event_assets = json.load(f)
 
         self.events = self.load_events()
@@ -71,7 +71,7 @@ class ImageReviewWindow(QWidget):
         self.update_display()
 
     def load_events(self):
-        with open(self.event_json_filepath, "r") as f:
+        with self.event_json_filepath.open("r") as f:
             data = json.load(f)
         if isinstance(data, list) and all(isinstance(event, dict) for event in data):
             return data
@@ -79,7 +79,7 @@ class ImageReviewWindow(QWidget):
             raise ValueError("Invalid JSON structure — expected flat list of event dicts.")
 
     def save_events(self):
-        with open(self.event_json_filepath, "w") as f:
+        with self.event_json_filepath.open("w") as f:
             json.dump(self.events, f, indent=2)
 
     def init_ui(self):
@@ -185,13 +185,14 @@ class ImageReviewWindow(QWidget):
         pixmap = QPixmap()
 
         if image_path:
-            if image_path.startswith("http"):
+            image_path = Path(image_path)
+            if str(image_path).startswith("http"):
                 try:
-                    pixmap.loadFromData(requests.get(image_path).content)
+                    pixmap.loadFromData(requests.get(str(image_path)).content)
                 except Exception as e:
                     print(f"❌ Error loading image from URL: {image_path}\n{e}")
-            elif os.path.exists(image_path):
-                pixmap = QPixmap(image_path)
+            elif image_path.exists():
+                pixmap = QPixmap(str(image_path))
             else:
                 print(f"❌ Image file does not exist: {image_path}")
         else:
@@ -200,9 +201,9 @@ class ImageReviewWindow(QWidget):
         # --- Fallback to placeholder if needed ---
         if pixmap.isNull():
             print("⚠️ Loading placeholder image")
-            placeholder_path = "resources/image_fail_placeholder.jpg"
-            if os.path.exists(placeholder_path):
-                pixmap = QPixmap(placeholder_path)
+            placeholder_path = Path("resources/image_fail_placeholder.jpg")
+            if placeholder_path.exists():
+                pixmap = QPixmap(str(placeholder_path))
             else:
                 self.image_label.setText("⚠️ Failed to load placeholder image.")
                 pixmap = None
@@ -294,15 +295,15 @@ class ImageReviewWindow(QWidget):
 
             image = Image.open(BytesIO(result.generated_images[0].image.image_bytes))
 
-            save_dir = "daily_chronicle/temp/temp_image_files"
-            os.makedirs(save_dir, exist_ok=True)
-            save_path = os.path.join(save_dir, f"regen_image_{self.index + 1}.jpg")
+            save_dir = Path("daily_chronicle/temp/temp_image_files")
+            save_dir.mkdir(parents=True, exist_ok=True)
+            save_path = save_dir / f"regen_image_{self.index + 1}.jpg"
             image.save(save_path, format="JPEG")
 
             # Add to cleanup list
-            temp_image_files.append(save_path)
+            temp_image_files.append(str(save_path))
 
-            return save_path
+            return str(save_path)
 
         except Exception as e:
             print("❌ Image generation failed:", e)
@@ -346,9 +347,9 @@ class ImageReviewWindow(QWidget):
                 img = Image.open(file_path).convert("RGB")
                 img = crop_center(img)
 
-                save_dir = "daily_chronicle/temp/temp_image_files"
-                os.makedirs(save_dir, exist_ok=True)
-                save_path = os.path.join(save_dir, f"manual_image_{self.index + 1}.jpg")
+                save_dir = Path("daily_chronicle/temp/temp_image_files")
+                save_dir.mkdir(parents=True, exist_ok=True)
+                save_path = save_dir / f"manual_image_{self.index + 1}.jpg"
                 img.save(save_path, format="JPEG")
 
                 # Add to cleanup list
@@ -365,9 +366,9 @@ class ImageReviewWindow(QWidget):
         img = Image.open(BytesIO(response.content)).convert("RGB")
         img = crop_center(img)
 
-        save_dir = "daily_chronicle/temp/temp_image_files"
-        os.makedirs(save_dir, exist_ok=True)
-        save_path = os.path.join(save_dir, f"manual_image_{self.index + 1}.jpg")
+        save_dir = Path("daily_chronicle/temp/temp_image_files")
+        save_dir.mkdir(parents=True, exist_ok=True)
+        save_path = save_dir / f"manual_image_{self.index + 1}.jpg"
         img.save(save_path, format="JPEG")
 
         return save_path
@@ -380,8 +381,8 @@ class ImageReviewWindow(QWidget):
 # --- Main launcher for standalone testing ---
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    event_json_path = "outputs/daily_chronicle_June_6.json"
-    event_assets_path = "daily_chronicle/temp/daily_chronicle_assets_June_6.json"
+    event_json_path = Path("testing/June_19_events.json")
+    event_assets_path = Path("testing/June_10_assets.json")
     window = ImageReviewWindow(event_json_path, event_assets_path)
     window.show()
     sys.exit(app.exec())

@@ -11,6 +11,7 @@ import subprocess
 import openai
 
 from daily_chronicle.genai_client import client, IMAGE_MODEL_ID
+from pathlib import Path
 
 # Global video clip + temp file trackers
 video_paths = []
@@ -137,22 +138,21 @@ def generate_event_image(event, index, generate_image_function):
         image_bytes = generate_image_function(prompt)
         image = Image.open(BytesIO(image_bytes))
 
-        image_out_path = f"daily_chronicle/temp/temp_image_files/event_image_{index + 1}.jpg"
-        os.makedirs(os.path.dirname(image_out_path), exist_ok=True)
+        image_out_path = Path("daily_chronicle") / "temp" / "temp_image_files" / f"event_image_{index + 1}.jpg"
+        image_out_path.parent.mkdir(parents=True, exist_ok=True)
         image.save(image_out_path, format="JPEG")
-        temp_image_files.append(image_out_path)
+        temp_image_files.append(str(image_out_path))
 
-        print(f"✅ Image saved: {image_out_path}")
-        return image_out_path
+        print(f"✅ Image saved: {str(image_out_path)}")
+        return str(image_out_path)
 
     except Exception as e:
         print("❌ Image generation failed:", e)
 
         # Add placeholder image path to maintain index alignment
-        placeholder_path = "resources/image_fail_placeholder.jpg"
-        
-        if not os.path.exists(placeholder_path):
-            os.makedirs("resources", exist_ok=True)
+        placeholder_path = Path("resources") / "image_fail_placeholder.jpg"
+        if not placeholder_path.exists():
+            placeholder_path.parent.mkdir(parents=True, exist_ok=True)
 
             # Create a white image
             img = Image.new("RGB", (1080, 1080), color=(255, 255, 255))
@@ -254,18 +254,18 @@ def build_event_segment(event, index, audio_paths, image_path):
     ).set_audio(padded_audio_2).set_duration(padded_audio_2.duration)
 
     # --- Folder + Output path ---
-    temp_dir = "daily_chronicle/temp/temp_video_files"
-    os.makedirs(temp_dir, exist_ok=True)
-    output_path = os.path.join(temp_dir, f"event_{index + 1:02d}.mp4")
+    temp_dir = Path("daily_chronicle") / "temp" / "temp_video_files"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    output_path = temp_dir / f"event_{index + 1:02d}.mp4"
 
     if not event.get("is_birthday", False):
         # Define PNG output paths
-        png_a = os.path.join(temp_dir, f"event_{index + 1:02d}_A.png")
-        png_b = os.path.join(temp_dir, f"event_{index + 1:02d}_B.png")
+        png_a = temp_dir / f"event_{index + 1:02d}_A.png"
+        png_b = temp_dir / f"event_{index + 1:02d}_B.png"
         temp_image_files.extend([png_a, png_b])
 
-        slide_1.save_frame(png_a, t=0)
-        slide_2.save_frame(png_b, t=0)
+        slide_1.save_frame(str(png_a), t=0)
+        slide_2.save_frame(str(png_b), t=0)
 
         slide_1 = ImageClip(png_a).set_duration(padded_audio_1.duration).set_audio(padded_audio_1)
         slide_2 = ImageClip(png_b).set_duration(padded_audio_2.duration).set_audio(padded_audio_2)
@@ -277,12 +277,12 @@ def build_event_segment(event, index, audio_paths, image_path):
     )
 
     # --- Write to .mp4 and return VideoFileClip ---
-    full_event_clip.write_videofile(output_path, fps=24, codec="libx264", audio_codec="aac", verbose=False, logger=None)
+    full_event_clip.write_videofile(str(output_path), fps=24, codec="libx264", audio_codec="aac", verbose=False, logger=None)
 
     print(f"✅ Event clip created — duration {full_event_clip.duration:.2f}s")
-    print(f"✅ Event clip saved → {output_path}")
+    print(f"✅ Event clip saved → {str(output_path)}")
 
-    return output_path
+    return str(output_path)
 
 def create_beautiful_background(image_path, logo_pos=(70, 85), image_pos="left"):
     with Image.open(image_path) as image:
@@ -338,13 +338,13 @@ def create_beautiful_background(image_path, logo_pos=(70, 85), image_pos="left")
 def export_final_video(video_clips, event_month: str, event_day: str):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     event_label = f"{event_month}_{event_day}"
-    output_dir = "outputs"
-    os.makedirs(output_dir, exist_ok=True)
+    output_dir = Path("outputs")
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     # Add the end credits to the list of video clips
-    end_credits_path = "resources/endcredits_silent.mp4"
-    if os.path.exists(end_credits_path):
-        end_credits_clip = VideoFileClip(end_credits_path)
+    end_credits_path = Path("resources") / "endcredits_silent.mp4"
+    if end_credits_path.exists():
+        end_credits_clip = VideoFileClip(str(end_credits_path))
         video_clips.append(end_credits_clip)
         print(f"🎞️ Added end credits: {end_credits_path}")
     else:
@@ -353,65 +353,66 @@ def export_final_video(video_clips, event_month: str, event_day: str):
     for clip in video_clips:
         print(f"Clip resolution: {clip.size}, FPS: {clip.fps}")
 
-    output_path = os.path.join(output_dir, f"{event_label}_{timestamp}.mp4")
+    output_path = output_dir / f"{event_label}_{timestamp}.mp4"
 
     print(f"🎞️ Concatenating {len(video_clips)} video clips...")
 
     final_video = concatenate_videoclips(video_clips, method="compose")
-    final_video.write_videofile(output_path, fps=30, codec="libx264", audio_codec="aac")
+    final_video.write_videofile(str(output_path), fps=30, codec="libx264", audio_codec="aac")
 
-    return output_path
+    return str(output_path)
 
-def export_final_video_ffmpeg(video_paths, event_month: str, event_day: str):
+def export_final_video_ffmpeg(video_paths, event_month: str, event_day: str) -> Path:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     event_label = f"{event_month}_{event_day}"
-    output_dir = "outputs"
-    os.makedirs(output_dir, exist_ok=True)
+    output_dir = Path("outputs")
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    concat_txt_path = os.path.join(output_dir, f"{event_label}_concat_list.txt")
-    output_video_path = os.path.join(output_dir, f"{event_label}_{timestamp}.mp4")
+    concat_txt_path = output_dir / f"{event_label}_concat_list.txt"
+    output_video_path = output_dir / f"{event_label}_{timestamp}.mp4"
 
     # Include end credits if they exist
-    end_credits_path = "resources/endcredits_silent.mp4"
-    if os.path.exists(end_credits_path):
-        video_paths.append(end_credits_path)
-        print(f"🎞️ Added end credits: {end_credits_path}")
+    end_credits_path = Path("resources") / "endcredits_silent.mp4"
+    if end_credits_path.exists():
+        video_paths.append(str(end_credits_path))
+        print(f"🎞️ Added end credits: {str(end_credits_path)}")
     else:
         print("⚠️ No end credits found")
 
     # Create the .txt file for ffmpeg concat
-    with open(concat_txt_path, "w") as f:
+    with concat_txt_path.open("w") as f:
         for path in video_paths:
-            f.write(f"file '{os.path.abspath(path)}'\n")
+            f.write(f"file '{Path(path).resolve()}'\n")
 
     # Run ffmpeg concat
     ffmpeg_cmd = [
-            "ffmpeg",
-            "-f", "concat",
-            "-safe", "0",
-            "-i", concat_txt_path,
-            "-c:v", "libx264",
-            "-r", "24",                 # enforce consistent framerate
-            "-c:a", "aac",
-            "-b:a", "192k",
-            output_video_path
-        ]
+        "ffmpeg",
+        "-f", "concat",
+        "-safe", "0",
+        "-i", str(concat_txt_path),
+        "-c:v", "libx264",
+        "-r", "24",                 # enforce consistent framerate
+        "-c:a", "aac",
+        "-b:a", "192k",
+        str(output_video_path)
+    ]
 
     print(f"🚀 Running ffmpeg to concat {len(video_paths)} files...")
     subprocess.run(ffmpeg_cmd, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
 
-    print(f"✅ Final video saved to: {output_video_path}")
+    print(f"✅ Final video saved to: {str(output_video_path)}")
 
     # remove end credits from video_paths to avoid destroying the mp4
-    video_paths.remove(end_credits_path)
+    video_paths.remove(str(end_credits_path))
 
-    return output_video_path
+    return str(output_video_path)
 
 def cleanup_temp_files(temp_audio_files, temp_image_files, temp_video_files, temp_json_files):
-    def safe_remove(path):
+    def safe_remove(path: str):
         try:
-            if os.path.exists(path):
-                os.remove(path)
+            path_to_del = Path(path)
+            if path_to_del.exists():
+                path_to_del.unlink()
         except Exception as e:
             print(f"⚠️ Could not delete {path}: {e}")
 

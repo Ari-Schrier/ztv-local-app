@@ -1,16 +1,16 @@
 # daily_chronicle/audio_generation.py
 
 import os
+from pathlib import Path
 import wave
-import asyncio
 import contextlib
-from google import genai
+from google.genai import types
 import openai
 from daily_chronicle.genai_client import client, TEXT_MODEL, IMAGE_MODEL_ID, AUDIO_MODEL_ID
 
 # --- Temp storage directory setup ---
-TEMP_AUDIO_DIR = os.path.join(os.path.dirname(__file__), "temp", "temp_audio_files")
-os.makedirs(TEMP_AUDIO_DIR, exist_ok=True)
+TEMP_AUDIO_DIR = Path(__file__).parent / "temp" / "temp_audio_files"
+TEMP_AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 
 # --- In-memory tracking for cleanup ---
 temp_audio_files = []
@@ -24,59 +24,15 @@ def wave_file(filename, channels=1, rate=24000, sample_width=2):
         wf.setframerate(rate)
         yield wf
 
-# --- Audio generation using Live API ---
-# -- OLD FUNCTION -- needs to be rewritten if we want to use it
-def generate_audio_live(narration_text: str, desired_filename: str) -> str:
-    collected_audio = bytearray()
-
-    full_prompt = (
-        "You are a voiceover narrator for an educational video. "
-        "Do not comment, react, or summarize. "
-        "Do not add introductions or conclusions. "
-        "Do not ask questions. "
-        "Just read the following text exactly, with a calm and clear tone:\n\n"
-        f"{narration_text}"
-    )
-
-    async def _generate():
-        config = {
-            "response_modalities": ["AUDIO"]
-        }
-        async with client.aio.live.connect(model=TEXT_MODEL, config=config) as session:
-            await session.send(input=full_prompt, end_of_turn=True)
-            async for response in session.receive():
-                if response.data:
-                    collected_audio.extend(response.data)
-        return bytes(collected_audio)
-
-    # Run the async generator
-    try:
-        audio_bytes = asyncio.run(_generate())
-    except RuntimeError:
-        loop = asyncio.get_event_loop()
-        audio_bytes = loop.run_until_complete(_generate())
-
-    # Output path in temp_audio
-    output_path = os.path.join(TEMP_AUDIO_DIR, desired_filename)
-
-    # Write to .wav file
-    with wave_file(output_path) as wf:
-        wf.writeframes(audio_bytes)
-
-    # Track temp file
-    temp_audio_files.append(output_path)
-
-    return output_path
-
 # --- Audio generation using Gemini TTS API ---
 def generate_tts_gemini(narration_text: str, desired_filename: str) -> str:
-    from google.genai import types
     
     response = client.models.generate_content(
         model=AUDIO_MODEL_ID,
         contents=f'''
-        TTS the following text, speaking in a professorial, firm, and informative tone, at a comfortable, non-rushed pace, as a narrator for an educational video:
-        {narration_text}
+        TTS the following text, speaking in a professorial, firm, and
+        informative tone, at a comfortable, non-rushed pace, as a
+        narrator for an educational video: {narration_text}
         ''',
         config=types.GenerateContentConfig(
             response_modalities=["AUDIO"],
@@ -102,7 +58,7 @@ def generate_tts_gemini(narration_text: str, desired_filename: str) -> str:
     audio_bytes = response.candidates[0].content.parts[0].inline_data.data
     
     # Output path
-    output_path = os.path.join(TEMP_AUDIO_DIR, desired_filename)
+    output_path = TEMP_AUDIO_DIR / desired_filename
 
     # Write to WAV file (the model outputs LINEAR16 WAV under the hood)
     with wave.open(output_path, "wb") as wf:
@@ -119,7 +75,21 @@ def generate_tts_gemini(narration_text: str, desired_filename: str) -> str:
 def generate_tts_openai(narration_text: str, desired_filename: str) -> str:
     client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-    instructions = """🎙️ Historical Event Curator – Voice Profile\n\nAffect:\nThoughtful and composed. Each word feels carefully chosen, as if revealing something meaningful. Speaks with quiet reverence for the past, inviting the listener to pause and reflect.\n\nTone:\nWarm, scholarly, and respectful. Never dry — always engaged. Holds a quiet passion for history, communicated through subtle inflection and sincerity.\n\nPacing:\nDeliberate and slow.\nAllows time for the listener to absorb each detail. Natural pauses after dates, names, or pivotal phrases help orient the listener in time and meaning. Never rushed.\n\nEmotions:\nCalm curiosity.\nA gentle sense of awe at the unfolding of history. Occasionally tinged with solemnity or admiration, depending on the gravity of the moment.\n\nPronunciation:\nClear and articulate.\nDates, places, and names are given special care. The delivery avoids contractions and slang, leaning into a formal but approachable style.\n\nPauses:\n\nAfter dates: to signal a historical moment.\n\nBefore an"""
+    instructions = """
+    🎙️ Historical Event Curator – Voice Profile\n\nAffect:\nThoughtful and composed. 
+    Each word feels carefully chosen, as if revealing something meaningful. 
+    Speaks with quiet reverence for the past, inviting the listener to pause and reflect.\n\n
+    Tone:\nWarm, scholarly, and respectful. Never dry — always engaged. 
+    Holds a quiet passion for history, communicated through subtle inflection and sincerity.\n\n
+    Pacing:\nDeliberate and slow.\nAllows time for the listener to absorb each detail. 
+    Natural pauses after dates, names, or pivotal phrases help orient the listener in time and meaning. 
+    Never rushed.\n\n
+    Emotions:\nCalm curiosity.\nA gentle sense of awe at the unfolding of history. 
+    Occasionally tinged with solemnity or admiration, depending on the gravity of the moment.\n\n
+    Pronunciation:\nClear and articulate.\nDates, places, and names are given special care. 
+    The delivery avoids contractions and slang, leaning into a formal but approachable style.\n\n
+    Pauses:\n\nAfter dates: to signal a historical moment.\n\n
+    Before significant names or events — to create space for impact.\n\nBetween sentences — to allow for reflection"""
 
     # Generate TTS using OpenAI's API
     response = client.audio.speech.create(
@@ -131,9 +101,9 @@ def generate_tts_openai(narration_text: str, desired_filename: str) -> str:
     )
 
     # Save audio bytes directly
-    output_path = os.path.join(TEMP_AUDIO_DIR, desired_filename)
-    with open(output_path, "wb") as f:
+    output_path = TEMP_AUDIO_DIR / desired_filename
+    with output_path.open("wb") as f:
         f.write(response.content)
 
-    temp_audio_files.append(output_path)
-    return output_path
+    temp_audio_files.append(str(output_path))
+    return str(output_path)

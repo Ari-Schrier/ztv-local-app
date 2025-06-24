@@ -2,13 +2,14 @@
 
 import sys
 import json
+from pathlib import Path
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QLabel, QLineEdit, QTextEdit, QMessageBox, QFormLayout, QSizePolicy
 )
 
 class EventReviewWindow(QWidget):
-    def __init__(self, json_path):
+    def __init__(self, json_path: Path):
         super().__init__()
 
         self.json_path = json_path
@@ -19,7 +20,7 @@ class EventReviewWindow(QWidget):
         self.update_display()
 
     def load_events(self):
-        with open(self.json_path, "r") as f:
+        with self.json_path.open("r") as f:
             data = json.load(f)
         if isinstance(data, list) and all(isinstance(event, dict) for event in data):
             return data
@@ -27,7 +28,7 @@ class EventReviewWindow(QWidget):
             raise ValueError("Invalid JSON structure — expected flat list of event dicts.")
 
     def save_events(self):
-        with open(self.json_path, "w") as f:
+        with self.json_path.open("w") as f:
             json.dump(self.events, f, indent=2)
 
     def init_ui(self):
@@ -191,9 +192,10 @@ class EventReviewWindow(QWidget):
         QMessageBox.information(self, "Saved", "✅ Events saved.")
         self.close()
 
-# Main launcher
+# Test main launcher
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = EventReviewWindow("outputs/daily_chronicle_June_6.json")
+    test_file_path = Path(__file__).parent / "testing" / "June_19_events.json"
+    window = EventReviewWindow(test_file_path)
     window.show()
     sys.exit(app.exec())

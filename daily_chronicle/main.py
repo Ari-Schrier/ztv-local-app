@@ -1,11 +1,13 @@
 # daily_chronicle/main.py
 
+from pathlib import Path
 from daily_chronicle.generator import generate_events, generate_events_gemini, generate_events_openai
 from daily_chronicle.slide_generation import *
 from daily_chronicle.audio_generation import generate_tts_gemini, generate_tts_openai
 from daily_chronicle.event_review import EventReviewWindow
+from daily_chronicle.image_review import ImageReviewWindow
+
 import json
-import os
 from dotenv import load_dotenv
 
 from PySide6.QtWidgets import QApplication
@@ -43,9 +45,11 @@ def main():
         return
 
     # --- Save event JSON ---
-    os.makedirs("outputs", exist_ok=True)
-    event_json_filepath = f"outputs/{month}_{day}_events.json"
-    with open(event_json_filepath, "w") as f:
+    OUTPUT_DIR = Path(__file__).parent / "outputs"
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    event_json_filepath = OUTPUT_DIR / f"{month}_{day}_events.json"
+    with event_json_filepath.open("w") as f:
         json.dump(events, f, indent=2)
     print(f"✅ Saved event JSON to {event_json_filepath}")
 
@@ -63,7 +67,11 @@ def main():
         reviewed_events = json.load(f)
 
     # --- Step 5: Generate image + audio assets + save paths ---
-    os.makedirs("daily_chronicle/temp", exist_ok=True)
+    
+    TEMP_DIR = Path(__file__).parent / "temp"
+    TEMP_DIR.mkdir(parents=True, exist_ok=True)
+
+
     temp_event_assets = []
     for idx, event in enumerate(reviewed_events):
         print(f"\n🖼️ Generating assets for event {idx + 1}/{len(reviewed_events)}...")
@@ -76,9 +84,9 @@ def main():
             "audio_path_2": audio_path_2
         })
     
-    temp_event_assets_filepath = f"daily_chronicle/temp/{month}_{day}_assets.json"
-    temp_json_files = [temp_event_assets_filepath]
-    with open(temp_event_assets_filepath, "w") as f:
+    temp_event_assets_filepath = TEMP_DIR / f"{month}_{day}_assets.json"
+    temp_json_files = [str(temp_event_assets_filepath)]
+    with temp_event_assets_filepath.open("w") as f:
         json.dump(temp_event_assets, f, indent=2)
     
     print(f"✅ Saved event assets to {temp_event_assets_filepath}")
@@ -86,7 +94,6 @@ def main():
     # --- Step 6: Launch Image Review ---
 
     print("\n🖼️ Launching IMAGE REVIEW window...")
-    from daily_chronicle.image_review import ImageReviewWindow
 
     image_window = ImageReviewWindow(event_json_filepath, temp_event_assets_filepath)
     image_window.show()
@@ -94,7 +101,7 @@ def main():
     print("✅ Image review complete.")
 
     # --- Step 7: Load review image/audio paths ---
-    with open(temp_event_assets_filepath, "r") as f:
+    with temp_event_assets_filepath.open("r") as f:
         reviewed_assets = json.load(f)
 
     # Extract the first image path from the reviewed assets
@@ -108,9 +115,10 @@ def main():
     print("\n🎬 Assembling final video...")
 
     title_slide = generate_title_slide(month, day, TTS_FUNCTION, first_image_path)
-    title_path = "daily_chronicle/temp/temp_video_files/title_slide.mp4"
-    title_slide.write_videofile(title_path, fps=24, codec="libx264", audio_codec="aac", verbose=False, logger=None)
-    video_paths.append(title_path)
+    title_path = TEMP_DIR / "temp_video_files" / "title_slide.mp4"
+    title_path.parent.mkdir(parents=True, exist_ok=True)  # Ensure the directory exists
+    title_slide.write_videofile(str(title_path), fps=24, codec="libx264", audio_codec="aac", verbose=False, logger=None)
+    video_paths.append(str(title_path))
 
     for asset in reviewed_assets:
         idx = asset["event_index"]
@@ -126,8 +134,8 @@ def main():
     # --- Step 9: Export final video ---
     print("\n🚀 Exporting final video...")
     try:
-        output_path = export_final_video_ffmpeg(video_paths, month, day)
-        print(f"\n🎉 Done! Video exported to: {output_path}")
+        final_vid_path = export_final_video_ffmpeg(video_paths, month, day)
+        print(f"\n🎉 Done! Video exported to: {str(final_vid_path)}")
     finally:
         print("\n🧹 Cleaning up temporary files...")
         cleanup_temp_files(temp_audio_files, temp_image_files, video_paths, temp_json_files)
