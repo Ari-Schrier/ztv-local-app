@@ -1,0 +1,74 @@
+[
+  {
+    "event_index": 0,
+    "image_path": "temp/temp_image_files/event_image_1.jpg",
+    "audio_path_1": "/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_audio_files/audio_1_slide1.wav",
+    "audio_path_2": "/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_audio_files/audio_1_slide2.wav"
+  },
+  {
+    "event_index": 1,
+    "image_path": "temp/temp_image_files/event_image_2.jpg",
+    "audio_path_1": "/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_audio_files/audio_2_slide1.wav",
+    "audio_path_2": "/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_audio_files/audio_2_slide2.wav"
+  },
+  {
+    "event_index": 2,
+    "image_path": "temp/temp_image_files/event_image_3.jpg",
+    "audio_path_1": "/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_audio_files/audio_3_slide1.wav",
+    "audio_path_2": "/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_audio_files/audio_3_slide2.wav"
+  },
+  {
+    "event_index": 3,
+    "image_path": "temp/temp_image_files/event_image_4.jpg",
+    "audio_path_1": "/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_audio_files/audio_4_slide1.wav",
+    "audio_path_2": "/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_audio_files/audio_4_slide2.wav"
+  },
+  {
+    "event_index": 4,
+    "image_path": "resources/image_fail_placeholder.jpg",
+    "audio_path_1": "/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_audio_files/audio_5_slide1.wav",
+    "audio_path_2": "/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_audio_files/audio_5_slide2.wav"
+  },
+  {
+    "event_index": 5,
+    "image_path": "resources/image_fail_placeholder.jpg",
+    "audio_path_1": "/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_audio_files/audio_6_slide1.wav",
+    "audio_path_2": "/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_audio_files/audio_6_slide2.wav"
+  },
+  {
+    "event_index": 6,
+    "image_path": "temp/temp_image_files/event_image_7.jpg",
+    "audio_path_1": "/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_audio_files/audio_7_slide1.wav",
+    "audio_path_2": "/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_audio_files/audio_7_slide2.wav"
+  },
+  {
+    "event_index": 7,
+    "image_path": "temp/temp_image_files/event_image_8.jpg",
+    "audio_path_1": "/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_audio_files/audio_8_slide1.wav",
+    "audio_path_2": "/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_audio_files/audio_8_slide2.wav"
+  },
+  {
+    "event_index": 8,
+    "image_path": "temp/temp_image_files/event_image_9.jpg",
+    "audio_path_1": "/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_audio_files/audio_9_slide1.wav",
+    "audio_path_2": "/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_audio_files/audio_9_slide2.wav"
+  },
+  {
+    "event_index": 9,
+    "image_path": "resources/image_fail_placeholder.jpg",
+    "audio_path_1": "/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_audio_files/audio_10_slide1.wav",
+    "audio_path_2": "/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_audio_files/audio_10_slide2.wav"
+  },
+  {
+    "event_index": 10,
+    "image_path": "temp/temp_image_files/event_image_11.jpg",
+    "audio_path_1": "/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_audio_files/audio_11_slide1.wav",
+    "audio_path_2": "/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_audio_files/audio_11_slide2.wav"
+  },
+  {
+    "event_index": 11,
+    "image_path": "temp/temp_image_files/event_image_12.jpg",
+    "audio_path_1": "/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_audio_files/audio_12_slide1.wav",
+    "audio_path_2": "/Users/macowner/Documents/zinnia/ztv-local-app/daily_chronicle/temp/temp_audio_files/audio_12_slide2.wav"
+  }
+]
