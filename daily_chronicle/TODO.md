@@ -112,6 +112,7 @@
 
 - Should image prompts be enhanced during generation or via a separate enhancement function?
 - Would birthday events benefit from a subtle animated confetti effect?
+- Should i refactor the cleanup with iterdir() from pathlib?
 
 ---
 
