@@ -1,7 +1,9 @@
-from daily_chronicle.slide_generation import generate_title_slide, pad_audio_with_silence
+from daily_chronicle.slide_generation import generate_title_slide
 from daily_chronicle.audio_generation import generate_tts_gemini  # or your TTS function
 from moviepy.editor import VideoFileClip
 import os
+
+from daily_chronicle.utils_tts import pad_audio_with_silence
 
 # Dummy values for test
 month = "June"

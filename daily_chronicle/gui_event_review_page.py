@@ -8,11 +8,12 @@ from PySide6.QtWidgets import (
     QLabel, QLineEdit, QTextEdit, QMessageBox, QFormLayout, QSizePolicy
 )
 
-class EventReviewWindow(QWidget):
-    def __init__(self, json_path: Path):
+class EventReviewPage(QWidget):
+    def __init__(self, json_path: Path, on_complete=None):
         super().__init__()
 
         self.json_path = json_path
+        self.on_complete = on_complete
         self.events = self.load_events()
         self.index = 0
 
@@ -112,7 +113,7 @@ class EventReviewWindow(QWidget):
         nav_layout.addWidget(self.reject_button)
 
         self.save_exit_button = QPushButton("Save and Close")
-        self.save_exit_button.clicked.connect(self.on_save_and_exit)
+        self.save_exit_button.clicked.connect(self.on_save_and_continue)
         nav_layout.addWidget(self.save_exit_button)
 
         main_layout.addLayout(nav_layout)
@@ -186,16 +187,17 @@ class EventReviewWindow(QWidget):
                 self.index = max(0, len(self.events) - 1)
             self.update_display()
 
-    def on_save_and_exit(self):
+    def on_save_and_continue(self):
         self.save_current_event()
         self.save_events()
         QMessageBox.information(self, "Saved", "✅ Events saved.")
-        self.close()
+        if self.on_complete:
+            self.on_complete()
 
 # Test main launcher
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     test_file_path = Path(__file__).parent / "testing" / "June_19_events.json"
-    window = EventReviewWindow(test_file_path)
+    window = EventReviewPage(test_file_path)
     window.show()
     sys.exit(app.exec())

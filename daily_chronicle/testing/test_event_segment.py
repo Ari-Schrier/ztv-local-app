@@ -1,6 +1,8 @@
-from daily_chronicle.slide_generation import build_event_segment, pad_audio_with_silence
+from daily_chronicle.slide_generation import build_event_segment
 from daily_chronicle.audio_generation import generate_tts_gemini
 import os
+
+from daily_chronicle.utils_tts import pad_audio_with_silence
 
 # Sample event
 event = {

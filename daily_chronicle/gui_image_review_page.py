@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QPixmap
 
-from .img_utils import crop_center
+from .utils_img import crop_center
 from io import BytesIO
 from PIL import Image
 
@@ -49,9 +49,9 @@ class Worker(QRunnable):
         finally:
             self.signals.finished.emit()
 
-# --- ImageReviewWindow ---
+# --- ImageReviewPage ---
 
-class ImageReviewWindow(QWidget):
+class ImageReviewPage(QWidget):
     def __init__(self, event_json_filepath: Path, event_assets_filepath: Path):
         super().__init__()
 
@@ -383,6 +383,6 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     event_json_path = Path("testing/June_19_events.json")
     event_assets_path = Path("testing/June_10_assets.json")
-    window = ImageReviewWindow(event_json_path, event_assets_path)
+    window = ImageReviewPage(event_json_path, event_assets_path)
     window.show()
     sys.exit(app.exec())

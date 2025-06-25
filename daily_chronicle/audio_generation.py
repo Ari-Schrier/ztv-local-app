@@ -7,6 +7,7 @@ import contextlib
 from google.genai import types
 import openai
 from daily_chronicle.genai_client import client, TEXT_MODEL, IMAGE_MODEL_ID, AUDIO_MODEL_ID
+from daily_chronicle.slide_generation import temp_audio_files
 
 # --- Temp storage directory setup ---
 TEMP_AUDIO_DIR = Path(__file__).parent / "temp" / "temp_audio_files"
@@ -107,3 +108,15 @@ def generate_tts_openai(narration_text: str, desired_filename: str) -> str:
 
     temp_audio_files.append(str(output_path))
     return str(output_path)
+
+def generate_event_audio(event, index, generate_tts_function):
+    clip1_text = f"{event['date_string']} {event['description']} {event['detail_1']}"
+    clip2_text = event["detail_2"]
+
+    print(f"🎙️ TTS: \"{clip1_text}\"")
+    audio_path_1 = generate_tts_function(clip1_text, f"audio_{index + 1}_slide1.wav")
+    print(f"🎙️ TTS: \"{clip2_text}\"")
+    audio_path_2 = generate_tts_function(clip2_text, f"audio_{index + 1}_slide2.wav")
+    temp_audio_files.extend([audio_path_1, audio_path_2])
+
+    return audio_path_1, audio_path_2
