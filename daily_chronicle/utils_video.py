@@ -34,10 +34,10 @@ def export_final_video(video_clips, event_month: str, event_day: str):
     return str(output_path)
 
 
-def export_final_video_ffmpeg(video_paths, event_month: str, event_day: str) -> Path:
+def export_final_video_ffmpeg(video_paths, event_month: str, event_day: str, logger=print) -> Path:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     event_label = f"{event_month}_{event_day}"
-    output_dir = Path("outputs")
+    output_dir = Path("daily_chronicle/outputs")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     concat_txt_path = output_dir / f"{event_label}_concat_list.txt"
@@ -47,9 +47,9 @@ def export_final_video_ffmpeg(video_paths, event_month: str, event_day: str) -> 
     end_credits_path = Path("resources") / "endcredits_silent.mp4"
     if end_credits_path.exists():
         video_paths.append(str(end_credits_path))
-        print(f"🎞️ Added end credits: {str(end_credits_path)}")
+        logger(f"🎞️ Added end credits: {str(end_credits_path)}")
     else:
-        print("⚠️ No end credits found")
+        logger("⚠️ No end credits found")
 
     # Create the .txt file for ffmpeg concat
     with concat_txt_path.open("w") as f:
@@ -69,12 +69,14 @@ def export_final_video_ffmpeg(video_paths, event_month: str, event_day: str) -> 
         str(output_video_path)
     ]
 
-    print(f"🚀 Running ffmpeg to concat {len(video_paths)} files...")
+    logger(f"🚀 Running ffmpeg to concat {len(video_paths)} files...")
     subprocess.run(ffmpeg_cmd, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-
-    print(f"✅ Final video saved to: {str(output_video_path)}")
 
     # remove end credits from video_paths to avoid destroying the mp4
     video_paths.remove(str(end_credits_path))
+
+    # remove the txt from the outputs folder
+    if concat_txt_path.exists():
+        concat_txt_path.unlink()
 
     return str(output_video_path)
