@@ -10,7 +10,6 @@ from daily_chronicle.generator import generate_events_gemini, generate_events_op
 from daily_chronicle.utils_img import generate_image_gemini
 from daily_chronicle.utils_img import generate_image_openai
 from daily_chronicle.audio_generation import generate_tts_gemini, generate_tts_openai
-from daily_chronicle.main import run_pipeline
 
 class LauncherPage(QWidget):
     def __init__(self, on_generate=None):
@@ -92,5 +91,5 @@ class LauncherPage(QWidget):
         else:
             QMessageBox.critical(self, "Error", "No generation handler connected.")
 
-        def get_num_events(self):
-            return self.num_events_input.value()
+    def get_num_events(self):
+        return self.num_events_input.value()
