@@ -48,7 +48,7 @@
 - [x] Replace an image (file picker or URL)
 - [x] Reject event entirely (e.g., from 16 generated, only accept best 12)
 - [x] Save reduced set of events to final event JSON
-- [ ] Add progress spinner while regenerating images
+- [x] Add progress spinner while regenerating images
 
 ---
 
@@ -58,7 +58,7 @@
     - [x] Ensure **1 of the 12 events is a famous birthday**
     - [x] Prompt-tune to **4th grade reading level** (currently tuned to 6th grade)
     - [x] Explicitly **discourage duplicate events**
-    - [ ] Evaluate: should **image_prompt enhancement** be part of initial generation or a separate postprocessing step?
+    - [x] Add prompt enhancement as an option
 
 ---
 
@@ -74,7 +74,7 @@
 
 - [ ] Add docstrings and inline comments for all major functions
 - [ ] Improve readability across all modules
-- [ ] Use `pathlib` instead of `os.path` for cross-platform compatibility
+- [x] Use `pathlib` instead of `os.path` for cross-platform compatibility
 
 ---
 
@@ -99,12 +99,13 @@
 
 ### 9️⃣ Packaging for Non-Technical Users
 
-- [ ] Create GUI frontend for easier use (PySide6/Tkinter)
-- [ ] Route CLI stdout into scrollable textbox for debugging/log display
-- [ ] Use **PyInstaller** to package the app as:
-    - [ ] `.exe` on Windows (via Parallels)
-    - [ ] `.app` on macOS
-- [ ] Provide a clickable desktop icon or shortcut (e.g. via batch script or `.app` wrapper)
+- [x] Create GUI frontend for easier use (PySide6/Tkinter)
+- [x] Route CLI stdout into scrollable textbox for debugging/log display
+- [ ] Add .sh and .bat files
+- [ ] test .sh file
+- [ ] test bat file in parallels
+- [ ] zip repo for sending
+- [ ] encrypt api key and send
 
 ---
 
