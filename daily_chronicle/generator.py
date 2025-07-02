@@ -4,28 +4,14 @@
 import os
 import json
 import re
-import time
 from openai import OpenAI
-import typing_extensions as typing
-import numpy as np
-from io import BytesIO
-
-# Image handling
-from PIL import Image
-
-# Video + audio
-from moviepy.editor import ImageClip, AudioFileClip, CompositeVideoClip, concatenate_videoclips
-import wave
-
-# Async support (for potential async calls)
-import asyncio
-import contextlib
 
 # Import client + model IDs
-from daily_chronicle.genai_client import client, TEXT_MODEL, IMAGE_MODEL_ID
+from daily_chronicle.genai_client import client, TEXT_MODEL
 
 # Import prompt templates + types
 from daily_chronicle.prompts import HistoricalEvent, EVENT_GENERATION_PROMPT_TEMPLATE
+from daily_chronicle.utils_logging import emoji
 
 # Gemini
 def generate_events_gemini(month: str, day: int, num_events: int = 3) -> list[HistoricalEvent]:
@@ -52,13 +38,11 @@ def generate_events_openai(month: str, day: int, num_events: int = 3) -> list[Hi
         
         response = client.responses.create(
             model="gpt-4o",
-            instructions="You are a historical event curator and pop culture/trivia for an educational slideshow for 4th graders.",
+            instructions="You are a historical event curator and pop culture/trivia expert for an educational slideshow for 4th graders.",
             input=prompt,
             temperature=0.3,
         )
         
-        print(f"OpenAI response: {response.output_text}")
-
         # Extract JSON block from markdown-style code block
         json_match = re.search(r"```(?:json)?\s*(\[\s*{.*?}\s*])\s*```", response.output_text, re.DOTALL)
         if not json_match:
@@ -90,3 +74,26 @@ if __name__ == "__main__":
             print(f"- {event.title} ({event.year})")
     else:
         print("No events generated.")
+
+def enhance_image_prompt(raw_prompt: str, logger=print) -> str:
+    instructions = "You are an expert at writing detailed, vivid image generation prompts for AI art models."
+    input = f"""Enhance the following prompt to make it more detailed, visual, and relevant for AI image generation.
+                Especially consider the time period of the event, the cultural context, and any notable visual elements
+                that would make the image more engaging for a 4th grade audience.
+                Prompt: "{raw_prompt}"
+                Enhanced prompt:"""
+
+    try:
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        
+        response = client.responses.create(
+            model="gpt-4o",
+            instructions=instructions,
+            input=input,
+            temperature=0.5
+        )
+
+        return response.output_text
+    except Exception as e:
+        logger(f"{emoji('cross_mark')} Failed to enhance image prompt: {e}")
+        return raw_prompt
