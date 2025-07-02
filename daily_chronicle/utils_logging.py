@@ -9,4 +9,5 @@ def emoji(name):
         "rocket": "\U0001F680",         # 🚀
         "tada": "\U0001F389",           # 🎉
         "broom": "\U0001F9F9",          # 🧹
+        "hammer": "\U0001F528",           # 🔨
     }.get(name, "")
