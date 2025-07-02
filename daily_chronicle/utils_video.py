@@ -5,6 +5,23 @@ from moviepy.editor import VideoFileClip, concatenate_videoclips
 from datetime import datetime
 from pathlib import Path
 
+import os
+import subprocess
+import platform
+
+def reveal_video_in_file_browser(path: str):
+    if platform.system() == "Windows":
+        # Use explorer and select the file
+        subprocess.run(["explorer", "/select,", os.path.normpath(path)])
+    elif platform.system() == "Darwin":
+        # Use macOS `open` with -R to reveal the file in Finder
+        subprocess.run(["open", "-R", path])
+    elif platform.system() == "Linux":
+        # On Linux, try xdg-open the folder (cannot highlight file in most environments)
+        folder = os.path.dirname(path)
+        subprocess.run(["xdg-open", folder])
+    else:
+        print("Unsupported OS for opening file browser.")
 
 def export_final_video(video_clips, event_month: str, event_day: str):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
