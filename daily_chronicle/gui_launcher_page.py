@@ -30,8 +30,8 @@ class LauncherPage(QWidget):
         # Number of events spinbox
         layout.addWidget(QLabel("Number of Events:"))
         self.num_events_input = QSpinBox()
-        self.num_events_input.setRange(1, 20)
-        self.num_events_input.setValue(15)  # Default value
+        self.num_events_input.setRange(2, 20)
+        self.num_events_input.setValue(16)  # Default value
         layout.addWidget(self.num_events_input)
 
         # Dropdowns
