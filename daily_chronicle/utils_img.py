@@ -1,10 +1,12 @@
+import base64
 from io import BytesIO
-import os
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
+import openai
 
 from daily_chronicle.genai_client import IMAGE_MODEL_ID, client
 from daily_chronicle.slide_generation import FONT_PATH, temp_image_files
+from daily_chronicle.utils_logging import emoji
 
 def crop_center(img: Image.Image) -> Image.Image:
     """Crops the image to a square based on the shortest side."""
@@ -45,9 +47,9 @@ def generate_image_openai(prompt):
     return image_bytes
 
 
-def generate_event_image(event, index, generate_image_function):
+def generate_event_image(event, index, generate_image_function, logger=print):
     prompt = event["image_prompt"]
-    print(f"🖼️ Generating image: \"{prompt}\"")
+    logger(f"🖼️ Generating image: \"{prompt}\"")
 
     # Generate image using the specified function
     try:
@@ -59,11 +61,11 @@ def generate_event_image(event, index, generate_image_function):
         image.save(image_out_path, format="JPEG")
         temp_image_files.append(str(image_out_path))
 
-        print(f"✅ Image saved: {str(image_out_path)}")
+        logger(f"✅ Image saved: {str(image_out_path)}")
         return str(image_out_path)
 
     except Exception as e:
-        print("❌ Image generation failed:", e)
+        logger(f"{emoji('cross_mark')} Image generation failed: {e}")
 
         # Add placeholder image path to maintain index alignment
         placeholder_path = Path("resources") / "image_fail_placeholder.jpg"
