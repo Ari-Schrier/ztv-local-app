@@ -2,7 +2,7 @@
 
 from pathlib import Path
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QStackedWidget, QPlainTextEdit, QLabel
+    QWidget, QVBoxLayout, QStackedWidget, QPlainTextEdit, QLabel, QMessageBox
 )
 from PySide6.QtCore import Signal, Slot, QThreadPool, Qt
 from PySide6.QtGui import QMovie
@@ -12,6 +12,7 @@ from daily_chronicle.gui_image_review_page import ImageReviewPage
 from daily_chronicle.gui_launcher_page import LauncherPage
 from daily_chronicle.pipeline import build_video_segments, cleanup, export_final_output, generate_and_save_events, generate_assets, initialize_pipeline, load_reviewed_assets, load_reviewed_events
 from daily_chronicle.utils_logging import emoji
+from daily_chronicle.utils_video import reveal_video_in_file_browser
 
 class MainWindow(QWidget):
     log_signal = Signal(str)
@@ -233,5 +234,8 @@ class MainWindow(QWidget):
             return
 
         cleanup(self.logger)
+        QMessageBox.information(self, "Video Complete", "Your video has been successfully exported!")
         self.logger(f"{emoji('tada')} Video export complete! Final video saved to: {final_video_path}")
-        self.logger(f"{emoji('link')} Open: file://{final_video_path}")
+
+        reveal_video_in_file_browser(final_video_path)
+        
