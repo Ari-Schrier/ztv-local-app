@@ -7,11 +7,12 @@ import requests
 from pathlib import Path
 
 from PySide6.QtCore import (
-    QObject, QRunnable, QThreadPool, Signal, Slot
+    QObject, QRunnable, QThreadPool, Signal, Slot, Qt
 )
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLabel, QTextEdit, QMessageBox, QFileDialog, QFormLayout, QInputDialog
+    QLabel, QTextEdit, QMessageBox, QFileDialog, QFormLayout, QInputDialog,
+    QScrollArea
 )
 from PySide6.QtGui import QPixmap
 
@@ -52,11 +53,15 @@ class Worker(QRunnable):
 # --- ImageReviewPage ---
 
 class ImageReviewPage(QWidget):
-    def __init__(self, event_json_filepath: Path, event_assets_filepath: Path):
+    def __init__(self, event_json_filepath: Path, event_assets_filepath: Path, show_spinner=None, hide_spinner=None, logger=print, on_complete=None):
         super().__init__()
 
         self.event_json_filepath = event_json_filepath
         self.event_assets_filepath = event_assets_filepath
+        self.show_spinner = show_spinner
+        self.hide_spinner = hide_spinner
+        self.on_complete = on_complete
+        self.logger = logger
 
         with self.event_assets_filepath.open("r") as f:
             self.event_assets = json.load(f)
@@ -65,7 +70,7 @@ class ImageReviewPage(QWidget):
         self.index = 0
 
         self.threadpool = QThreadPool()
-        print(f"Multithreading with maximum {self.threadpool.maxThreadCount()} threads")
+        self.logger(f"[Multithreading ImageReview with maximum {self.threadpool.maxThreadCount()} threads]")
 
         self.init_ui()
         self.update_display()
@@ -84,9 +89,13 @@ class ImageReviewPage(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("Daily Chronicle — Image Review")
-        self.setFixedSize(1000, 900)
 
-        main_layout = QVBoxLayout()
+        # === Outer scroll area ===
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+
+        container = QWidget()
+        main_layout = QVBoxLayout(container)
         main_layout.setContentsMargins(20, 20, 20, 20)
 
         # Instructions
@@ -97,44 +106,40 @@ class ImageReviewPage(QWidget):
             "- 'Replace' lets you choose a local file or enter an image URL.\n"
             "- 'Previous' and 'Next' navigate images.\n"
             "- 'Reject Image' removes an image.\n"
-            "- 'Save and Close' saves the JSON and closes this window.\n"
+            "- 'Save and Continue' saves the JSON and continues to the next stage.\n"
         )
         instructions.setWordWrap(True)
-        instructions.setFixedWidth(750)
-        instructions.setMaximumHeight(130)
         main_layout.addWidget(instructions)
 
         # Counter label
         self.counter_label = QLabel("")
         main_layout.addWidget(self.counter_label)
 
-        # Image preview — CENTERED
+        # Image preview
         self.image_label = QLabel("Image Preview")
-        self.image_label.setFixedSize(512, 512)
+        self.image_label.setAlignment(Qt.AlignHCenter)
         self.image_label.setStyleSheet("border: 1px solid black;")
+        self.image_label.setFixedSize(500, 500)
         self.image_label.setScaledContents(True)
 
         image_layout = QHBoxLayout()
         image_layout.addStretch()
         image_layout.addWidget(self.image_label)
         image_layout.addStretch()
-
         main_layout.addLayout(image_layout)
 
-        # Form layout
+        # Image prompt input
         form_layout = QFormLayout()
         form_layout.setHorizontalSpacing(20)
 
         self.image_prompt_input = QTextEdit()
-        self.image_prompt_input.setMinimumWidth(600)
-        self.image_prompt_input.setFixedHeight(75)
+        self.image_prompt_input.setFixedHeight(100)
+        self.image_prompt_input.setFixedWidth(650)
         form_layout.addRow("Image Prompt:", self.image_prompt_input)
-
         main_layout.addLayout(form_layout)
 
         # Action buttons
         action_layout = QHBoxLayout()
-
         self.regen_button = QPushButton("Regenerate Image")
         self.regen_button.clicked.connect(self.on_regenerate)
         action_layout.addWidget(self.regen_button)
@@ -142,12 +147,10 @@ class ImageReviewPage(QWidget):
         self.replace_button = QPushButton("Replace Image")
         self.replace_button.clicked.connect(self.on_replace)
         action_layout.addWidget(self.replace_button)
-
         main_layout.addLayout(action_layout)
 
         # Navigation buttons
         nav_layout = QHBoxLayout()
-
         self.prev_button = QPushButton("Previous")
         self.prev_button.clicked.connect(self.on_prev)
         nav_layout.addWidget(self.prev_button)
@@ -160,13 +163,18 @@ class ImageReviewPage(QWidget):
         self.reject_button.clicked.connect(self.on_reject)
         nav_layout.addWidget(self.reject_button)
 
-        self.save_exit_button = QPushButton("Save and Close")
-        self.save_exit_button.clicked.connect(self.on_save_and_exit)
-        nav_layout.addWidget(self.save_exit_button)
+        self.save_continue_button = QPushButton("Save and Continue")
+        self.save_continue_button.clicked.connect(self.on_save_and_continue)
+        nav_layout.addWidget(self.save_continue_button)
 
         main_layout.addLayout(nav_layout)
 
-        self.setLayout(main_layout)
+        # Final assembly
+        scroll_area.setWidget(container)
+        outer_layout = QVBoxLayout(self)
+        outer_layout.addWidget(scroll_area)
+        self.setLayout(outer_layout)
+
 
     def update_display(self):
         if not self.event_assets:
@@ -190,17 +198,17 @@ class ImageReviewPage(QWidget):
                 try:
                     pixmap.loadFromData(requests.get(str(image_path)).content)
                 except Exception as e:
-                    print(f"❌ Error loading image from URL: {image_path}\n{e}")
+                    self.logger(f"❌ Error loading image from URL: {image_path}\n{e}")
             elif image_path.exists():
                 pixmap = QPixmap(str(image_path))
             else:
-                print(f"❌ Image file does not exist: {image_path}")
+                self.logger(f"❌ Image file does not exist: {image_path}")
         else:
-            print(f"❌ No image path for event {self.index + 1}")
+            self.logger(f"❌ No image path for event {self.index + 1}")
 
         # --- Fallback to placeholder if needed ---
         if pixmap.isNull():
-            print("⚠️ Loading placeholder image")
+            self.logger("⚠️ Loading placeholder image")
             placeholder_path = Path("resources/image_fail_placeholder.jpg")
             if placeholder_path.exists():
                 pixmap = QPixmap(str(placeholder_path))
@@ -254,17 +262,22 @@ class ImageReviewPage(QWidget):
                 self.index = max(0, len(self.event_assets) - 1)
             self.update_display()
 
-    def on_save_and_exit(self):
+    def on_save_and_continue(self):
         self.save_current_event()
         self.save_events()
         with open(self.event_assets_filepath, "w") as f:
             json.dump(self.event_assets, f, indent=2)
         QMessageBox.information(self, "Saved", "✅ Events and image paths saved.")
+        
+        if self.on_complete:
+            self.on_complete()
+        
         self.close()
 
     # --- Threaded actions ---
 
     def on_regenerate(self):
+        self.show_spinner()
         self.save_current_event()
         prompt_text = self.image_prompt_input.toPlainText()
         worker = Worker(self.regenerate_image, prompt_text)
@@ -277,7 +290,7 @@ class ImageReviewPage(QWidget):
         from io import BytesIO
         from PIL import Image
 
-        print(f"Regenerating image for prompt: {prompt_text}")
+        self.logger(f"Regenerating image for prompt: {prompt_text}")
 
         result = client.models.generate_images(
             model=IMAGE_MODEL_ID,
@@ -306,12 +319,13 @@ class ImageReviewPage(QWidget):
             return str(save_path)
 
         except Exception as e:
-            print("❌ Image generation failed:", e)
+            self.logger(f"❌ Image generation failed: {e}")
             return None
 
     def on_regen_result(self, image_path):
+        self.hide_spinner()
         if image_path:
-            print(f"New image: {image_path}")
+            self.logger(f"New image: {image_path}")
             self.event_assets[self.index]["image_path"] = image_path
             self.update_display()
             QMessageBox.information(self, "Regenerate Complete", "New image generated.")
@@ -319,7 +333,7 @@ class ImageReviewPage(QWidget):
             QMessageBox.warning(self, "Regenerate Failed", "Image generation failed. Please try again.")
 
     def on_regen_finished(self):
-        print("Regeneration complete.")
+        self.logger("Regeneration complete.")
 
     def on_replace(self):
         choice = QMessageBox.question(
@@ -353,13 +367,13 @@ class ImageReviewPage(QWidget):
                 img.save(save_path, format="JPEG")
 
                 # Add to cleanup list
-                temp_image_files.append(save_path)
+                temp_image_files.append(str(save_path))
 
                 self.event_assets[self.index]["image_path"] = save_path
                 self.update_display()
 
     def download_image_from_url(self, url):
-        print(f"Downloading image from: {url}")
+        self.logger(f"Downloading image from: {url}")
         response = requests.get(url)
         response.raise_for_status()
 
@@ -374,15 +388,15 @@ class ImageReviewPage(QWidget):
         return save_path
 
     def on_replace_result(self, image_path):
-        print(f"Replaced with: {image_path}")
+        self.logger(f"Replaced with: {image_path}")
         self.event_assets[self.index]["image_path"] = image_path
         self.update_display()
 
 # --- Main launcher for standalone testing ---
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    event_json_path = Path("testing/June_19_events.json")
-    event_assets_path = Path("testing/June_10_assets.json")
+    event_json_path = Path("daily_chronicle/testing/June_19_events.json")
+    event_assets_path = Path("daily_chronicle/testing/June_10_assets.json")
     window = ImageReviewPage(event_json_path, event_assets_path)
     window.show()
     sys.exit(app.exec())

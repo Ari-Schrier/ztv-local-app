@@ -9,11 +9,13 @@ from PySide6.QtWidgets import (
 )
 
 class EventReviewPage(QWidget):
-    def __init__(self, json_path: Path, on_complete=None):
+    def __init__(self, json_path: Path, show_spinner=None, hide_spinner=None, on_complete=None):
         super().__init__()
 
         self.json_path = json_path
         self.on_complete = on_complete
+        self.show_spinner = show_spinner
+        self.hide_spinner = hide_spinner
         self.events = self.load_events()
         self.index = 0
 
@@ -45,7 +47,7 @@ class EventReviewPage(QWidget):
             "- You may edit Header Title, Description, Details, Image Prompt, and Audio Text.\n"
             "- 'Previous' and 'Next' navigate events.\n"
             "- 'Reject Event' removes an event.\n"
-            "- 'Save and Close' saves the JSON and closes this window.\n"
+            "- 'Save and Continue' saves the JSON and continues to the next stage.\n"
         )
         instructions.setWordWrap(True)
         instructions.setFixedWidth(700)
@@ -112,9 +114,9 @@ class EventReviewPage(QWidget):
         self.reject_button.clicked.connect(self.on_reject)
         nav_layout.addWidget(self.reject_button)
 
-        self.save_exit_button = QPushButton("Save and Close")
-        self.save_exit_button.clicked.connect(self.on_save_and_continue)
-        nav_layout.addWidget(self.save_exit_button)
+        self.save_continue_button = QPushButton("Save and Continue")
+        self.save_continue_button.clicked.connect(self.on_save_and_continue)
+        nav_layout.addWidget(self.save_continue_button)
 
         main_layout.addLayout(nav_layout)
 
@@ -191,6 +193,10 @@ class EventReviewPage(QWidget):
         self.save_current_event()
         self.save_events()
         QMessageBox.information(self, "Saved", "✅ Events saved.")
+        
+        self.reject_button.setEnabled(False)
+        self.save_continue_button.setEnabled(False)
+        
         if self.on_complete:
             self.on_complete()
 
