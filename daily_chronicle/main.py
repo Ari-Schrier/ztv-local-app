@@ -7,7 +7,6 @@ from daily_chronicle.slide_generation import *
 from daily_chronicle.audio_generation import generate_event_audio, generate_tts_gemini, generate_tts_openai
 from daily_chronicle.gui_event_review_page import EventReviewPage
 from daily_chronicle.gui_image_review_page import ImageReviewPage
-from daily_chronicle.gui_launcher_page import LauncherPage
 from daily_chronicle.gui_main_window import MainWindow
 
 import json
