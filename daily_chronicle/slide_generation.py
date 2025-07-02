@@ -2,6 +2,7 @@ import os
 from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips, CompositeVideoClip, ColorClip, TextClip
 from PIL import Image, ImageDraw, ImageFilter
 import numpy as np
+from daily_chronicle.utils_logging import emoji
 
 
 from pathlib import Path
@@ -12,6 +13,7 @@ from daily_chronicle.utils_tts import pad_audio_with_silence
 video_paths = []
 temp_audio_files = []
 temp_image_files = []
+temp_json_files = []
 
 VIDEO_WIDTH = 1920
 VIDEO_HEIGHT = 1080
@@ -25,7 +27,7 @@ def generate_title_slide(month, day, generate_tts_function, image_paths=None):
     title_content = f"The Daily Chronicle"
     subtitle_content = f"{month} {day}"
     narration_text = f"Welcome to the Daily Chronicle. Today, we will explore the historical events that occurred on {month} {day}. Let's find out what happened on this day in history."
-    audio_path = generate_tts_function(narration_text, "title_narration.wav")
+    audio_path = str(generate_tts_function(narration_text, "title_narration.wav"))
     temp_audio_files.append(audio_path)
 
     clip_audio = AudioFileClip(audio_path)
@@ -68,7 +70,7 @@ def generate_title_slide(month, day, generate_tts_function, image_paths=None):
 
     return title_slide
 
-def build_event_segment(event, index, audio_paths, image_path):
+def build_event_segment(event, index, audio_paths, image_path, logger=print):
     """
     Generate the complete video slides with audio and image.
     Returns the video clip for the event.
@@ -76,8 +78,8 @@ def build_event_segment(event, index, audio_paths, image_path):
 
     # Defensive check for missing image
     if not image_path or not os.path.exists(image_path):
-        raise ValueError(f"❌ Invalid or missing image path for event {index + 1}: {image_path}")
-    
+        raise ValueError(f"{emoji('cross_mark')} Invalid or missing image path for event {index + 1}: {image_path}")
+
     # Texts for Slides
     clip1_toptext = f"{event['date_string']} {event['header_title']}"
     clip1_centertext = f"{event['description']} {event['detail_1']}"
@@ -149,7 +151,9 @@ def build_event_segment(event, index, audio_paths, image_path):
     # --- Folder + Output path ---
     temp_dir = Path("daily_chronicle") / "temp" / "temp_video_files"
     temp_dir.mkdir(parents=True, exist_ok=True)
-    output_path = temp_dir / f"event_{index + 1:02d}.mp4"
+    output_path = temp_dir / f"event_{index + 1}.mp4"
+
+    logger(f"\n{emoji('frame')} Building clip for event {index + 1}...")
 
     if not event.get("is_birthday", False):
         # Define PNG output paths
@@ -160,8 +164,8 @@ def build_event_segment(event, index, audio_paths, image_path):
         slide_1.save_frame(str(png_a), t=0)
         slide_2.save_frame(str(png_b), t=0)
 
-        slide_1 = ImageClip(png_a).set_duration(padded_audio_1.duration).set_audio(padded_audio_1)
-        slide_2 = ImageClip(png_b).set_duration(padded_audio_2.duration).set_audio(padded_audio_2)
+        slide_1 = ImageClip(str(png_a)).set_duration(padded_audio_1.duration).set_audio(padded_audio_1)
+        slide_2 = ImageClip(str(png_b)).set_duration(padded_audio_2.duration).set_audio(padded_audio_2)
 
     # --- Combine A → B with crossfade ---
     full_event_clip = concatenate_videoclips(
@@ -172,8 +176,8 @@ def build_event_segment(event, index, audio_paths, image_path):
     # --- Write to .mp4 and return VideoFileClip ---
     full_event_clip.write_videofile(str(output_path), fps=24, codec="libx264", audio_codec="aac", verbose=False, logger=None)
 
-    print(f"✅ Event clip created — duration {full_event_clip.duration:.2f}s")
-    print(f"✅ Event clip saved → {str(output_path)}")
+    logger(f"{emoji('check')} Event clip created — duration {full_event_clip.duration:.2f}s")
+    logger(f"{emoji('check')} Event clip saved → {str(output_path)}")
 
     return str(output_path)
 
@@ -228,27 +232,27 @@ def create_beautiful_background(image_path, logo_pos=(70, 85), image_pos="left")
 
         return final_background
 
-def cleanup_temp_files(temp_audio_files, temp_image_files, temp_video_files, temp_json_files):
+def cleanup_temp_files(temp_audio_files, temp_image_files, temp_video_files, temp_json_files, logger=print):
     def safe_remove(path: str):
         try:
             path_to_del = Path(path)
             if path_to_del.exists():
                 path_to_del.unlink()
         except Exception as e:
-            print(f"⚠️ Could not delete {path}: {e}")
+            logger(f"{emoji('cross_mark')} Could not delete {path}: {e}")
 
-    print("🧹 Cleaning up temp audio files...")
+    logger(f"{emoji('broom')} Cleaning up temp audio files...")
     for path in temp_audio_files:
         safe_remove(path)
 
-    print("🧹 Cleaning up temp image files...")
+    logger(f"{emoji('broom')} Cleaning up temp image files...")
     for path in temp_image_files:
         safe_remove(path)
 
-    print("🧹 Cleaning up temp video files...")
+    logger(f"{emoji('broom')} Cleaning up temp video files...")
     for path in temp_video_files:
         safe_remove(path)
 
-    print("🧹 Cleaning up temp JSON files...")
+    logger(f"{emoji('broom')} Cleaning up temp JSON files...")
     for path in temp_json_files:
         safe_remove(path)
