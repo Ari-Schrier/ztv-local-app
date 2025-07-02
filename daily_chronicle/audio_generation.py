@@ -62,7 +62,7 @@ def generate_tts_gemini(narration_text: str, desired_filename: str) -> str:
     output_path = TEMP_AUDIO_DIR / desired_filename
 
     # Write to WAV file (the model outputs LINEAR16 WAV under the hood)
-    with wave.open(output_path, "wb") as wf:
+    with wave.open(str(output_path), "wb") as wf:
         wf.setnchannels(1)
         wf.setsampwidth(2)
         wf.setframerate(24000)
@@ -109,13 +109,13 @@ def generate_tts_openai(narration_text: str, desired_filename: str) -> str:
     temp_audio_files.append(str(output_path))
     return str(output_path)
 
-def generate_event_audio(event, index, generate_tts_function):
+def generate_event_audio(event, index, generate_tts_function, logger=print):
     clip1_text = f"{event['date_string']} {event['description']} {event['detail_1']}"
     clip2_text = event["detail_2"]
 
-    print(f"🎙️ TTS: \"{clip1_text}\"")
+    logger(f"🎙️ Generating TTS: \"{clip1_text}\"")
     audio_path_1 = generate_tts_function(clip1_text, f"audio_{index + 1}_slide1.wav")
-    print(f"🎙️ TTS: \"{clip2_text}\"")
+    logger(f"🎙️ Generating TTS: \"{clip2_text}\"")
     audio_path_2 = generate_tts_function(clip2_text, f"audio_{index + 1}_slide2.wav")
     temp_audio_files.extend([audio_path_1, audio_path_2])
 
