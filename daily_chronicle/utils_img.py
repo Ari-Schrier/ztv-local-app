@@ -4,9 +4,11 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 import openai
 
-from daily_chronicle.genai_client import IMAGE_MODEL_ID, client
+from daily_chronicle.genai_client import GEMINI_IMG_MODEL, client_gemini
 from daily_chronicle.slide_generation import FONT_PATH, temp_image_files
 from daily_chronicle.utils_logging import emoji
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential
+
 
 def crop_center(img: Image.Image) -> Image.Image:
     """Crops the image to a square based on the shortest side."""
@@ -20,8 +22,8 @@ def crop_center(img: Image.Image) -> Image.Image:
 
 
 def generate_image_gemini(prompt):
-    result = client.models.generate_images(
-        model=IMAGE_MODEL_ID,
+    result = client_gemini.models.generate_images(
+        model=GEMINI_IMG_MODEL,
         prompt=prompt,
         config={
             "number_of_images": 1,
@@ -45,6 +47,18 @@ def generate_image_openai(prompt):
     image_b64 = response.data[0].b64_json
     image_bytes = base64.b64decode(image_b64)
     return image_bytes
+
+@retry(wait=wait_random_exponential(multiplier=0.8, min=2, max=20),
+        stop=stop_after_attempt(5))
+def generate_image_gemini_with_backoff(prompt):
+    return generate_image_gemini(prompt)
+
+@retry(wait=wait_random_exponential(multiplier=0.8, min=2, max=20),
+        stop=stop_after_attempt(5),
+        retry=retry_if_exception_type((openai.RateLimitError, openai.Timeout))
+        )
+def generate_image_openai_with_backoff(prompt):
+    return generate_image_openai(prompt)
 
 
 def generate_event_image(event, index, generate_image_function, logger=print):
