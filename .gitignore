@@ -1,7 +1,11 @@
-/tkinter_tutorials
-/__pycache__
-/output
+/tkinter_tutorials/
+/__pycache__/
+/output/
 .env
 *.mp3
 *.mp4
 *.pyc
+.venv/
+daily_chronicle/temp/
+daily_chronicle/outputs/
+outputs/
