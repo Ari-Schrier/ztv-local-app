@@ -50,7 +50,6 @@ def export_final_video(video_clips, event_month: str, event_day: str):
 
     return str(output_path)
 
-
 def export_final_video_ffmpeg(video_paths, event_month: str, event_day: str, logger=print) -> Path:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     event_label = f"{event_month}_{event_day}"
