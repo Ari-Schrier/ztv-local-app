@@ -102,8 +102,8 @@
 - [x] Create GUI frontend for easier use (PySide6/Tkinter)
 - [x] Route CLI stdout into scrollable textbox for debugging/log display
 - [ ] Add .sh and .bat files
-- [ ] test .sh file
-- [ ] test bat file in parallels
+- [x] test .sh file
+- [ ] test bat file
 - [ ] zip repo for sending
 - [ ] encrypt api key and send
 
@@ -111,12 +111,10 @@
 
 ## 🧠 Standing Questions
 
-- Should image prompts be enhanced during generation or via a separate enhancement function?
+- Should image prompts be enhanced?
 - Would birthday events benefit from a subtle animated confetti effect?
 - Should i refactor the cleanup with iterdir() from pathlib?
 
 ---
 
 ## 🌱 Stretch Goals
-
-- [ ] Birthday event: add celebratory confetti animation over slides
