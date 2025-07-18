@@ -1,14 +1,13 @@
 # gui_launcher.py
 
 from PySide6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QLabel,
+    QWidget, QVBoxLayout, QLabel,
     QPushButton, QComboBox, QCalendarWidget, QMessageBox, QSpinBox
 )
 from PySide6.QtCore import QDate
 
 from daily_chronicle.generator import generate_events_gemini, generate_events_openai
-from daily_chronicle.utils_img import generate_image_gemini
-from daily_chronicle.utils_img import generate_image_openai
+from daily_chronicle.utils_img import generate_image_gemini_with_backoff, generate_image_openai_with_backoff
 from daily_chronicle.audio_generation import generate_tts_gemini, generate_tts_openai
 
 class LauncherPage(QWidget):
@@ -72,8 +71,8 @@ class LauncherPage(QWidget):
             "Gemini": generate_events_gemini,
         }
         image_func_map = {
-            "OpenAI": generate_image_openai,
-            "Gemini": generate_image_gemini,
+            "OpenAI": generate_image_openai_with_backoff,
+            "Gemini": generate_image_gemini_with_backoff,
         }
         tts_func_map = {
             "OpenAI": generate_tts_openai,
