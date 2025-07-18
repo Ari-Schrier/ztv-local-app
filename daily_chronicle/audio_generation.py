@@ -1,20 +1,15 @@
 # daily_chronicle/audio_generation.py
 
-import os
 from pathlib import Path
 import wave
 import contextlib
 from google.genai import types
-import openai
-from daily_chronicle.genai_client import client, TEXT_MODEL, IMAGE_MODEL_ID, AUDIO_MODEL_ID
+from daily_chronicle.genai_client import client_gemini, client_openai, GEMINI_TTS_MODEL
 from daily_chronicle.slide_generation import temp_audio_files
 
 # --- Temp storage directory setup ---
 TEMP_AUDIO_DIR = Path(__file__).parent / "temp" / "temp_audio_files"
 TEMP_AUDIO_DIR.mkdir(parents=True, exist_ok=True)
-
-# --- In-memory tracking for cleanup ---
-temp_audio_files = []
 
 # --- Wave file context manager ---
 @contextlib.contextmanager
@@ -28,8 +23,8 @@ def wave_file(filename, channels=1, rate=24000, sample_width=2):
 # --- Audio generation using Gemini TTS API ---
 def generate_tts_gemini(narration_text: str, desired_filename: str) -> str:
     
-    response = client.models.generate_content(
-        model=AUDIO_MODEL_ID,
+    response = client_gemini.models.generate_content(
+        model=GEMINI_TTS_MODEL,
         contents=f'''
         TTS the following text, speaking in a professorial, firm, and
         informative tone, at a comfortable, non-rushed pace, as a
@@ -74,7 +69,6 @@ def generate_tts_gemini(narration_text: str, desired_filename: str) -> str:
     return output_path
 
 def generate_tts_openai(narration_text: str, desired_filename: str) -> str:
-    client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
     instructions = """
     🎙️ Historical Event Curator – Voice Profile\n\nAffect:\nThoughtful and composed. 
@@ -93,7 +87,7 @@ def generate_tts_openai(narration_text: str, desired_filename: str) -> str:
     Before significant names or events — to create space for impact.\n\nBetween sentences — to allow for reflection"""
 
     # Generate TTS using OpenAI's API
-    response = client.audio.speech.create(
+    response = client_openai.audio.speech.create(
         model="gpt-4o-mini-tts",
         voice="echo",  # Specify the voice configuration
         instructions = instructions,
