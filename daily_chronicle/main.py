@@ -1,10 +1,10 @@
 # daily_chronicle/main.py
 
 from pathlib import Path
-from daily_chronicle.generator import generate_events, generate_events_gemini, generate_events_openai
+from daily_chronicle.generator import generate_events
 from daily_chronicle.utils_img import generate_event_image
-from daily_chronicle.slide_generation import *
-from daily_chronicle.audio_generation import generate_event_audio, generate_tts_gemini, generate_tts_openai
+from daily_chronicle.slide_generation import generate_title_slide, build_event_segment, cleanup_temp_files, video_paths, temp_audio_files, temp_image_files
+from daily_chronicle.audio_generation import generate_event_audio
 from daily_chronicle.gui_event_review_page import EventReviewPage
 from daily_chronicle.gui_image_review_page import ImageReviewPage
 from daily_chronicle.gui_main_window import MainWindow
