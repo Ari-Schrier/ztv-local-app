@@ -8,6 +8,8 @@ from daily_chronicle.audio_generation import generate_event_audio
 from daily_chronicle.gui_event_review_page import EventReviewPage
 from daily_chronicle.gui_image_review_page import ImageReviewPage
 from daily_chronicle.gui_main_window import MainWindow
+import warnings
+
 
 import json
 from dotenv import load_dotenv
@@ -15,6 +17,8 @@ from dotenv import load_dotenv
 from PySide6.QtWidgets import QApplication
 
 from daily_chronicle.utils_video import export_final_video_ffmpeg
+
+warnings.filterwarnings("ignore", category=SyntaxWarning)
 
 NUM_EVENTS = 3  # Number of events to generate
 
