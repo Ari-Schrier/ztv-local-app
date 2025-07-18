@@ -1,22 +1,18 @@
 # daily_chronicle/pipeline.py
 
-import threading
 import time
 import json
-from pathlib import Path
-from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from daily_chronicle.generator import enhance_image_prompt, generate_events
+from daily_chronicle.generator import generate_events
 from daily_chronicle.utils_img import generate_event_image
-from daily_chronicle.slide_generation import build_event_segment, build_event_segment_ffmpeg, generate_title_slide, cleanup_temp_files, video_paths, temp_json_files
+from daily_chronicle.slide_generation import build_event_segment_ffmpeg, generate_title_slide, cleanup_temp_files, video_paths, temp_json_files
 from daily_chronicle.audio_generation import generate_event_audio
 from daily_chronicle.utils_logging import emoji
 from daily_chronicle.utils_video import export_final_video_ffmpeg
 
 # --- STEP 1: Initialization ---
 def initialize_pipeline(logger):
-    load_dotenv()
     logger(f"{emoji('calendar')} Welcome to the Daily Chronicle Generator!")
 
 # --- STEP 2: Generate Events ---
