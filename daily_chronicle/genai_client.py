@@ -2,6 +2,10 @@ import os
 from google import genai
 import openai
 
+from dotenv import load_dotenv
+# Load environment variables
+load_dotenv()
+
 # Initialize Gemini client
 client_gemini = genai.Client(http_options={
     'api_version': 'v1alpha'
