@@ -53,9 +53,10 @@ class Worker(QRunnable):
 # --- ImageReviewPage ---
 
 class ImageReviewPage(QWidget):
-    def __init__(self, event_json_filepath: Path, event_assets_filepath: Path, show_spinner=None, hide_spinner=None, logger=print, on_complete=None):
+    def __init__(self, img_func, event_json_filepath: Path, event_assets_filepath: Path, show_spinner=None, hide_spinner=None, logger=print, on_complete=None):
         super().__init__()
 
+        self.img_func = img_func
         self.event_json_filepath = event_json_filepath
         self.event_assets_filepath = event_assets_filepath
         self.show_spinner = show_spinner
@@ -264,6 +265,11 @@ class ImageReviewPage(QWidget):
 
     def on_save_and_continue(self):
         self.save_current_event()
+
+        # ✅ Fix the event_index values to match current order
+        for i, asset in enumerate(self.event_assets):
+            asset["event_index"] = i
+
         self.save_events()
         with open(self.event_assets_filepath, "w") as f:
             json.dump(self.event_assets, f, indent=2)
@@ -280,33 +286,18 @@ class ImageReviewPage(QWidget):
         self.show_spinner()
         self.save_current_event()
         prompt_text = self.image_prompt_input.toPlainText()
-        worker = Worker(self.regenerate_image, prompt_text)
+        worker = Worker(self.regenerate_image, self.img_func, prompt_text)
         worker.signals.result.connect(self.on_regen_result)
         worker.signals.finished.connect(self.on_regen_finished)
         self.threadpool.start(worker)
 
     def regenerate_image(self, prompt_text):
-        from daily_chronicle.genai_client import client, IMAGE_MODEL_ID
-        from io import BytesIO
-        from PIL import Image
 
         self.logger(f"Regenerating image for prompt: {prompt_text}")
 
-        result = client.models.generate_images(
-            model=IMAGE_MODEL_ID,
-            prompt=prompt_text,
-            config={
-                "number_of_images": 1,
-                "output_mime_type": "image/jpeg",
-                "aspect_ratio": "1:1",
-            }
-        )
-
         try:
-            if not result.generated_images:
-                raise ValueError("No images were generated.")
-
-            image = Image.open(BytesIO(result.generated_images[0].image.image_bytes))
+            image_bytes = self.img_func(prompt_text)
+            image = Image.open(BytesIO(image_bytes))
 
             save_dir = Path("daily_chronicle/temp/temp_image_files")
             save_dir.mkdir(parents=True, exist_ok=True)
@@ -319,7 +310,7 @@ class ImageReviewPage(QWidget):
             return str(save_path)
 
         except Exception as e:
-            self.logger(f"❌ Image generation failed: {e}")
+            self.logger(f"❌ Image regeneration failed: {e}")
             return None
 
     def on_regen_result(self, image_path):
