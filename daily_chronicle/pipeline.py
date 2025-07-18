@@ -91,7 +91,7 @@ def generate_assets_threaded(events, image_func, tts_func, temp_dir, month, day,
             "audio_path_2": str(audio_path_2),
         }
 
-    with ThreadPoolExecutor(max_workers=6) as executor:
+    with ThreadPoolExecutor(max_workers=min(6, len(events))) as executor:
         for idx, event in enumerate(events):
             future = executor.submit(process_event, idx, event)
             futures.append(future)
