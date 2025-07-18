@@ -1,19 +1,24 @@
+import os
 from google import genai
+import openai
 
 # Initialize Gemini client
-client = genai.Client(http_options={
+client_gemini = genai.Client(http_options={
     'api_version': 'v1alpha'
 })
 
+# Initialize OpenAI client
+client_openai = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
 def list_available_models():
-    for model in client.models.list():
+    for model in client_gemini.models.list():
         print(model.name)
 
 
 # Model configs
-TEXT_MODEL = "models/gemini-2.0-flash-exp"
-IMAGE_MODEL_ID = "imagen-3.0-generate-002"
-AUDIO_MODEL_ID = "models/gemini-2.5-flash-preview-tts"
+GEMINI_TEXT_MODEL = "models/gemini-2.0-flash-exp"
+GEMINI_IMG_MODEL = "imagen-3.0-generate-002"
+GEMINI_TTS_MODEL = "models/gemini-2.5-flash-preview-tts"
 
 def main():
     print("Available models:")
