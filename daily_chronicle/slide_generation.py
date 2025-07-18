@@ -1,5 +1,6 @@
 import os
-from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips, CompositeVideoClip, ColorClip, TextClip
+import subprocess
+from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips, CompositeVideoClip, TextClip
 from PIL import Image, ImageDraw, ImageFilter
 import numpy as np
 from daily_chronicle.utils_logging import emoji
@@ -24,7 +25,7 @@ FONT_PATH = "resources/HelveticaNeueMedium.otf"
 
 # --- Title slide generator ---
 def generate_title_slide(month, day, generate_tts_function, image_paths=None):
-    title_content = f"The Daily Chronicle"
+    title_content = "The Daily Chronicle"
     subtitle_content = f"{month} {day}"
     narration_text = f"Welcome to the Daily Chronicle. Today, we will explore the historical events that occurred on {month} {day}. Let's find out what happened on this day in history."
     audio_path = str(generate_tts_function(narration_text, "title_narration.wav"))
@@ -178,6 +179,107 @@ def build_event_segment(event, index, audio_paths, image_path, logger=print):
 
     logger(f"{emoji('check')} Event clip created — duration {full_event_clip.duration:.2f}s")
     logger(f"{emoji('check')} Event clip saved → {str(output_path)}")
+
+    return str(output_path)
+
+def build_event_segment_ffmpeg(event, index, audio_paths, image_path, logger=print):
+    if not image_path or not Path(image_path).exists():
+        raise ValueError(f"{emoji('cross_mark')} Invalid or missing image path for event {index + 1}: {image_path}")
+
+    clip1_toptext = f"{event['date_string']} {event['header_title']}"
+    clip1_centertext = f"{event['description']} {event['detail_1']}"
+    clip2_text = event["detail_2"]
+
+    # Load and pad audio
+    padded_audio_1 = pad_audio_with_silence(AudioFileClip(audio_paths[0]))
+    padded_audio_2 = pad_audio_with_silence(AudioFileClip(audio_paths[1]))
+
+    temp_dir = Path("daily_chronicle") / "temp" / "temp_video_files"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+
+    # Paths
+    png_a = temp_dir / f"event_{index + 1:02d}_A.png"
+    png_b = temp_dir / f"event_{index + 1:02d}_B.png"
+    wav_a = temp_dir / f"event_{index + 1:02d}_A.wav"
+    wav_b = temp_dir / f"event_{index + 1:02d}_B.wav"
+    mp4_a = temp_dir / f"event_{index + 1:02d}_A.mp4"
+    mp4_b = temp_dir / f"event_{index + 1:02d}_B.mp4"
+    output_path = temp_dir / f"event_{index + 1}.mp4"
+
+    # Slide A
+    bg_a = create_beautiful_background(image_path, image_pos="right", logo_pos=(70, 85))
+    img_clip_a = ImageClip(np.array(bg_a)).set_duration(padded_audio_1.duration)
+    text_top = TextClip(clip1_toptext, fontsize=60, font=FONT_PATH, color='white', size=(770, None), method='caption').set_position((70, 200))
+    text_center = TextClip(clip1_centertext, fontsize=48, font=FONT_PATH, color='white', size=(770, None), method='caption').set_position((70, 500))
+    slide_a = CompositeVideoClip([img_clip_a, text_top.set_duration(img_clip_a.duration), text_center.set_duration(img_clip_a.duration)], size=(1920, 1080))
+    slide_a.save_frame(str(png_a), t=0)
+
+    # Slide B
+    bg_b = create_beautiful_background(image_path, image_pos="left", logo_pos=(1644, 85))
+    img_clip_b = ImageClip(np.array(bg_b)).set_duration(padded_audio_2.duration)
+    text_right = TextClip(clip2_text, fontsize=48, font=FONT_PATH, color='white', size=(770, None), method='caption').set_position((1080, 400))
+    slide_b = CompositeVideoClip([img_clip_b, text_right.set_duration(img_clip_b.duration)], size=(1920, 1080))
+    slide_b.save_frame(str(png_b), t=0)
+
+    temp_image_files.extend([png_a, png_b])
+
+    # Export audio
+    padded_audio_1.write_audiofile(str(wav_a), fps=44100, logger=None, verbose=False)
+    padded_audio_2.write_audiofile(str(wav_b), fps=44100, logger=None, verbose=False)
+
+    dur1 = round(padded_audio_1.duration, 3)
+    dur2 = round(padded_audio_2.duration, 3)
+
+    # Create slide A video
+    subprocess.run([
+        "ffmpeg", "-y",
+        "-loop", "1", "-r", "24", "-i", str(png_a),
+        "-i", str(wav_a),
+        "-t", str(dur1),
+        "-vf", "format=yuv420p",
+        "-c:v", "libx264", "-tune", "stillimage",
+        "-c:a", "aac", "-b:a", "192k",
+        str(mp4_a)
+    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    # Create slide B video
+    subprocess.run([
+        "ffmpeg", "-y",
+        "-loop", "1", "-r", "24", "-i", str(png_b),
+        "-i", str(wav_b),
+        "-t", str(dur2),
+        "-vf", "format=yuv420p",
+        "-c:v", "libx264", "-tune", "stillimage",
+        "-c:a", "aac", "-b:a", "192k",
+        str(mp4_b)
+    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    # FFmpeg crossfade: calculate when to start
+
+    crossfade = 0.6
+    xfade_start = dur1 - crossfade
+
+    # Crossfade filter
+    subprocess.run([
+        "ffmpeg", "-y",
+        "-i", str(mp4_a),
+        "-i", str(mp4_b),
+        "-filter_complex",
+        f"[0:v][1:v]xfade=transition=fade:duration={crossfade}:offset={xfade_start},format=yuv420p[v];"
+        f"[0:a]aresample=async=1:first_pts=0[a0];"
+        f"[1:a]aresample=async=1:first_pts=0[a1];"
+        f"[a0][a1]acrossfade=d={crossfade}[a]",
+        "-map", "[v]",
+        "-map", "[a]",
+        "-c:v", "libx264",
+        "-c:a", "aac",
+        "-ac", "2",
+        "-ar", "44100",
+        str(output_path)
+    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    logger(f"{emoji('check')} Event clip created — duration ≈ {dur1 + dur2 - crossfade:.2f}s")
+    logger(f"{emoji('check')} Event clip saved → {output_path}")
 
     return str(output_path)
 
