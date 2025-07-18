@@ -1,12 +1,15 @@
 # daily_chronicle/pipeline.py
 
+import threading
+import time
 import json
 from pathlib import Path
 from dotenv import load_dotenv
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from daily_chronicle.generator import enhance_image_prompt, generate_events
 from daily_chronicle.utils_img import generate_event_image
-from daily_chronicle.slide_generation import build_event_segment, generate_title_slide, cleanup_temp_files, video_paths, temp_json_files
+from daily_chronicle.slide_generation import build_event_segment, build_event_segment_ffmpeg, generate_title_slide, cleanup_temp_files, video_paths, temp_json_files
 from daily_chronicle.audio_generation import generate_event_audio
 from daily_chronicle.utils_logging import emoji
 from daily_chronicle.utils_video import export_final_video_ffmpeg
@@ -67,6 +70,47 @@ def generate_assets(events, image_func, tts_func, temp_dir, month, day, logger):
     logger(f"{emoji('check')} Saved event assets to {asset_path}")
     return temp_event_assets, asset_path
 
+def generate_assets_threaded(events, image_func, tts_func, temp_dir, month, day, logger, delay_between_starts=1.5):
+    logger(f"{emoji('gear')} Starting threaded asset generation...")
+
+    # Limit concurrent image generation to avoid hitting rate limits
+
+    temp_event_assets = [None] * len(events)  # Preallocate to preserve order
+    futures = []
+    future_to_index = {}
+
+    def process_event(idx, event):
+        logger(f"{emoji('frame')} Generating assets for event {idx + 1}/{len(events)}...")
+        
+        audio_path_1, audio_path_2 = generate_event_audio(event, idx, tts_func, logger)
+        image_path = generate_event_image(event, idx, image_func, logger)
+        return {
+            "event_index": idx,
+            "image_path": str(image_path),
+            "audio_path_1": str(audio_path_1),
+            "audio_path_2": str(audio_path_2),
+        }
+
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        for idx, event in enumerate(events):
+            future = executor.submit(process_event, idx, event)
+            futures.append(future)
+            future_to_index[future] = idx
+            time.sleep(delay_between_starts)  # ⏱️ stagger thread launch
+
+        for future in as_completed(futures):
+            idx = future_to_index[future]
+            asset = future.result()
+            temp_event_assets[idx] = asset
+
+    asset_path = temp_dir / f"{month}_{day}_assets.json"
+    with asset_path.open("w") as f:
+        json.dump(temp_event_assets, f, indent=2)
+
+    temp_json_files.append(str(asset_path))
+    logger(f"{emoji('check')} Saved event assets to {asset_path}")
+    return temp_event_assets, asset_path
+
 # --- STEP 5: Load Reviewed Assets ---
 def load_reviewed_assets(asset_path, logger):
     logger(f"\n{emoji('inbox')} Loading reviewed assets...")
@@ -88,7 +132,7 @@ def build_video_segments(month, day, reviewed_events, reviewed_assets, tts_func,
     for asset in reviewed_assets:
         idx = asset["event_index"]
         event = reviewed_events[idx]
-        video_path = build_event_segment(event, idx, (asset["audio_path_1"], asset["audio_path_2"]), asset["image_path"], logger)
+        video_path = build_event_segment_ffmpeg(event, idx, (asset["audio_path_1"], asset["audio_path_2"]), asset["image_path"], logger)
         video_paths.append(video_path)
 
     return video_paths

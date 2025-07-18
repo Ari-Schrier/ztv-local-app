@@ -10,7 +10,7 @@ from daily_chronicle.utils_threading import WorkerRunnable
 from daily_chronicle.gui_event_review_page import EventReviewPage
 from daily_chronicle.gui_image_review_page import ImageReviewPage
 from daily_chronicle.gui_launcher_page import LauncherPage
-from daily_chronicle.pipeline import build_video_segments, cleanup, export_final_output, generate_and_save_events, generate_assets, initialize_pipeline, load_reviewed_assets, load_reviewed_events
+from daily_chronicle.pipeline import build_video_segments, cleanup, export_final_output, generate_and_save_events, generate_assets_threaded, initialize_pipeline, load_reviewed_assets, load_reviewed_events
 from daily_chronicle.utils_logging import emoji
 from daily_chronicle.utils_video import reveal_video_in_file_browser
 
@@ -88,7 +88,7 @@ class MainWindow(QWidget):
         self.console.appendPlainText(message)
         self.console.verticalScrollBar().setValue(self.console.verticalScrollBar().maximum())
 
-    def start_event_phase(self, month, day, event_func, image_func, tts_func):
+    def start_event_phase(self, month, day, event_func, img_func, tts_func):
         
         initialize_pipeline(self.logger)
 
@@ -99,7 +99,7 @@ class MainWindow(QWidget):
         # save for later phases
         self.month = month
         self.day = day
-        self.image_func = image_func
+        self.img_func = img_func
         self.tts_func = tts_func
 
         self.logger(f"{emoji('gear')} Running event generation in background...")
@@ -148,9 +148,9 @@ class MainWindow(QWidget):
         temp_dir.mkdir(parents=True, exist_ok=True)
 
         worker = WorkerRunnable(
-            generate_assets,
+            generate_assets_threaded,
             reviewed_events,
-            self.image_func,
+            self.img_func,
             self.tts_func,
             temp_dir,
             self.month,
@@ -171,6 +171,7 @@ class MainWindow(QWidget):
 
         # Proceed to image review page
         self.image_review_page = ImageReviewPage(
+            self.img_func,
             self.event_json_path,
             self.asset_json_path,
             self.show_spinner,
