@@ -370,6 +370,9 @@ def build_event_segment_ffmpeg_edited(event, index, audio_paths, image_path, log
             "-c:v", "libx264", "-r", "24", str(mp4)
         ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
+    # Use black video for crossfade
+    blackscreen_path = Path("resources/black_nologo.mp4")
+
     # FFmpeg crossfade: calculate when to start
     subprocess.run([
     "ffmpeg", "-y",
@@ -377,7 +380,7 @@ def build_event_segment_ffmpeg_edited(event, index, audio_paths, image_path, log
     "-i", str(mp4_b),
     "-i", str(mp4_c),
     "-i", str(mp4_d),
-    "-i", "resources/black_nologo.mp4",
+    "-i", str(blackscreen_path),
     "-i", str(wav_b),
     "-i", str(wav_c),
     "-i", str(wav_d),
