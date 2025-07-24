@@ -286,7 +286,7 @@ class ImageReviewPage(QWidget):
         self.show_spinner()
         self.save_current_event()
         prompt_text = self.image_prompt_input.toPlainText()
-        worker = Worker(self.regenerate_image, self.img_func, prompt_text)
+        worker = Worker(self.regenerate_image, prompt_text)
         worker.signals.result.connect(self.on_regen_result)
         worker.signals.finished.connect(self.on_regen_finished)
         self.threadpool.start(worker)
