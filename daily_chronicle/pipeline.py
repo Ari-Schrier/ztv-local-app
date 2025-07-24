@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from daily_chronicle.generator import generate_events
 from daily_chronicle.utils_img import generate_event_image
-from daily_chronicle.slide_generation import build_event_segment_ffmpeg, generate_title_slide, cleanup_temp_files, video_paths, temp_json_files
+from daily_chronicle.slide_generation import build_event_segment_ffmpeg_edited, generate_title_slide, cleanup_temp_files, video_paths, temp_json_files
 from daily_chronicle.audio_generation import generate_event_audio
 from daily_chronicle.utils_logging import emoji
 from daily_chronicle.utils_video import export_final_video_ffmpeg
@@ -78,13 +78,14 @@ def generate_assets_threaded(events, image_func, tts_func, temp_dir, month, day,
     def process_event(idx, event):
         logger(f"{emoji('frame')} Generating assets for event {idx + 1}/{len(events)}...")
         
-        audio_path_1, audio_path_2 = generate_event_audio(event, idx, tts_func, logger)
+        audio_path_1, audio_path_2, audio_path_3 = generate_event_audio(event, idx, tts_func, logger)
         image_path = generate_event_image(event, idx, image_func, logger)
         return {
             "event_index": idx,
             "image_path": str(image_path),
             "audio_path_1": str(audio_path_1),
             "audio_path_2": str(audio_path_2),
+            "audio_path_3": str(audio_path_3),
         }
 
     with ThreadPoolExecutor(max_workers=min(6, len(events))) as executor:
@@ -128,7 +129,7 @@ def build_video_segments(month, day, reviewed_events, reviewed_assets, tts_func,
     for asset in reviewed_assets:
         idx = asset["event_index"]
         event = reviewed_events[idx]
-        video_path = build_event_segment_ffmpeg(event, idx, (asset["audio_path_1"], asset["audio_path_2"]), asset["image_path"], logger)
+        video_path = build_event_segment_ffmpeg_edited(event, idx, (asset["audio_path_1"], asset["audio_path_2"], asset["audio_path_3"]), asset["image_path"], logger)
         video_paths.append(video_path)
 
     return video_paths

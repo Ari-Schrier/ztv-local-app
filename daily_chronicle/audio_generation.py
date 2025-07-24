@@ -104,13 +104,16 @@ def generate_tts_openai(narration_text: str, desired_filename: str) -> str:
     return str(output_path)
 
 def generate_event_audio(event, index, generate_tts_function, logger=print):
-    clip1_text = f"{event['date_string']} {event['description']} {event['detail_1']}"
-    clip2_text = event["detail_2"]
+    clip1_toptext = f"{event['date_string']}"
+    clip1_centertext = f"{event['description']} {event['detail_1']}"
+    clip1_bottomtext = event["detail_2"]
 
-    logger(f"🎙️ Generating TTS: \"{clip1_text}\"")
-    audio_path_1 = generate_tts_function(clip1_text, f"audio_{index + 1}_slide1.wav")
-    logger(f"🎙️ Generating TTS: \"{clip2_text}\"")
-    audio_path_2 = generate_tts_function(clip2_text, f"audio_{index + 1}_slide2.wav")
-    temp_audio_files.extend([audio_path_1, audio_path_2])
+    logger(f"🎙️ Generating TTS: \"{clip1_toptext}\"")
+    audio_path_1 = generate_tts_function(clip1_toptext, f"audio_{index + 1}_toptext.wav")
+    logger(f"🎙️ Generating TTS: \"{clip1_centertext}\"")
+    audio_path_2 = generate_tts_function(clip1_centertext, f"audio_{index + 1}_centertext.wav")
+    logger(f"🎙️ Generating TTS: \"{clip1_bottomtext}\"")
+    audio_path_3 = generate_tts_function(clip1_bottomtext, f"audio_{index + 1}_bottomtext.wav")
+    temp_audio_files.extend([audio_path_1, audio_path_2, audio_path_3])
 
-    return audio_path_1, audio_path_2
+    return audio_path_1, audio_path_2, audio_path_3

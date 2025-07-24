@@ -283,6 +283,130 @@ def build_event_segment_ffmpeg(event, index, audio_paths, image_path, logger=pri
 
     return str(output_path)
 
+def build_event_segment_ffmpeg_edited(event, index, audio_paths, image_path, logger=print):
+    if not image_path or not Path(image_path).exists():
+        raise ValueError(f"{emoji('cross_mark')} Invalid or missing image path for event {index + 1}: {image_path}")
+
+    clip1_toptext = f"{event['date_string']} {event['header_title']}"
+    clip1_centertext = f"{event['description']} {event['detail_1']}"
+    clip1_bottomtext = event["detail_2"]
+
+    # Load and pad audio
+    padded_audio_1 = pad_audio_with_silence(AudioFileClip(audio_paths[0]), pre_duration=2.5, post_duration=2)
+    padded_audio_2 = pad_audio_with_silence(AudioFileClip(audio_paths[1]), pre_duration=2.5, post_duration=3)
+    padded_audio_3 = pad_audio_with_silence(AudioFileClip(audio_paths[2]), pre_duration=2.5, post_duration=5)
+
+    temp_dir = Path("daily_chronicle") / "temp" / "temp_video_files"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+
+    # Paths
+    png_a = temp_dir / f"event_{index + 1:02d}_A.png"
+    png_b = temp_dir / f"event_{index + 1:02d}_B.png"
+    png_c = temp_dir / f"event_{index + 1:02d}_C.png"
+    png_d = temp_dir / f"event_{index + 1:02d}_D.png"
+    wav_b = temp_dir / f"event_{index + 1:02d}_B.wav"
+    wav_c = temp_dir / f"event_{index + 1:02d}_C.wav"
+    wav_d = temp_dir / f"event_{index + 1:02d}_D.wav"
+    mp4_a = temp_dir / f"event_{index + 1:02d}_A.mp4"
+    mp4_b = temp_dir / f"event_{index + 1:02d}_B.mp4"
+    mp4_c = temp_dir / f"event_{index + 1:02d}_C.mp4"
+    mp4_d = temp_dir / f"event_{index + 1:02d}_D.mp4"
+    output_path = temp_dir / f"event_{index + 1}.mp4"
+
+    # Slide A
+    bg_a = create_beautiful_background(image_path, image_pos="right", logo_pos=(70, 85))
+    img_clip_a = ImageClip(np.array(bg_a))
+    text_top = TextClip(clip1_toptext, fontsize=60, font=FONT_PATH, color='white', size=(770, None), method='caption').set_position((70, 200))
+    text_center = TextClip(clip1_centertext, fontsize=48, font=FONT_PATH, color='white', size=(770, None), method='caption').set_position((70, 500))
+    text_bottom = TextClip(clip1_bottomtext, fontsize=48, font=FONT_PATH, color='white', size=(770, None), method='caption').set_position((70, 800))
+    
+    slide_a = CompositeVideoClip([img_clip_a], size=(1920, 1080))
+    slide_a.save_frame(str(png_a), t=0)
+    slide_b = CompositeVideoClip([img_clip_a, text_top.set_duration(padded_audio_1.duration)], size=(1920, 1080))
+    slide_b.save_frame(str(png_b), t=0)
+    slide_c = CompositeVideoClip([img_clip_a, text_top, text_center.set_duration(padded_audio_2.duration)], size=(1920, 1080))
+    slide_c.save_frame(str(png_c), t=0)
+    slide_d = CompositeVideoClip([img_clip_a, text_top, text_center, text_bottom.set_duration(padded_audio_3.duration)], size=(1920, 1080))
+    slide_d.save_frame(str(png_d), t=0)
+
+    temp_image_files.extend([png_a, png_b, png_c, png_d])
+
+    # Export audio
+    padded_audio_1.write_audiofile(str(wav_b), fps=44100, logger=None, verbose=False)
+    padded_audio_2.write_audiofile(str(wav_c), fps=44100, logger=None, verbose=False)
+    padded_audio_3.write_audiofile(str(wav_d), fps=44100, logger=None, verbose=False)
+
+    dur_b = round(padded_audio_1.duration, 3)
+    dur_c = round(padded_audio_2.duration, 3)
+    dur_d = round(padded_audio_3.duration, 3)
+
+    crossfade = 1.5
+
+    offset_ab = 1
+
+    dur_a = crossfade + offset_ab
+    
+    offset_bc = offset_ab + dur_b - crossfade
+    offset_cd = offset_bc + dur_c - crossfade
+    offset_dblack = offset_cd + dur_d - 2.5
+
+    # Create slide A video
+    subprocess.run([
+        "ffmpeg", "-y", "-loop", "1", "-i", str(png_a),
+        "-t", str(dur_a),  # must be at least offset + fade
+        "-vf", "format=yuv420p,fade=t=in:st=0:d=1.5",
+        "-c:v", "libx264", "-r", "24", str(mp4_a)
+    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    # Slides B, C, D (no fade, just static durations)
+    for i, (png, mp4, dur) in enumerate(zip(
+        [png_b, png_c, png_d],
+        [mp4_b, mp4_c, mp4_d],
+        [dur_b, dur_c, dur_d]
+    )):
+        subprocess.run([
+            "ffmpeg", "-y", "-loop", "1", "-i", str(png),
+            "-t", str(dur), "-vf", "format=yuv420p",
+            "-c:v", "libx264", "-r", "24", str(mp4)
+        ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    # FFmpeg crossfade: calculate when to start
+    subprocess.run([
+    "ffmpeg", "-y",
+    "-i", str(mp4_a),
+    "-i", str(mp4_b),
+    "-i", str(mp4_c),
+    "-i", str(mp4_d),
+    "-i", "resources/black_nologo.mp4",
+    "-i", str(wav_b),
+    "-i", str(wav_c),
+    "-i", str(wav_d),
+    "-filter_complex",
+    f"""
+    [0:v][1:v]xfade=transition=fade:duration={crossfade}:offset={offset_ab}[v1];
+    [v1][2:v]xfade=transition=fade:duration={crossfade}:offset={offset_bc}[v2];
+    [v2][3:v]xfade=transition=fade:duration={crossfade}:offset={offset_cd}[v3];
+    [v3][4:v]xfade=transition=fade:duration={crossfade}:offset={offset_dblack}[vout];
+
+    [5:a][6:a]acrossfade=d=1.5[a01];
+    [a01][7:a]acrossfade=d=1.5[aout]
+    """.replace("\n", "").strip(),
+    "-map", "[vout]",
+    "-map", "[aout]",
+    "-c:v", "libx264",
+    "-c:a", "aac",
+    "-ac", "2",
+    "-ar", "44100",
+    "-pix_fmt", "yuv420p",
+    "-shortest",
+    str(output_path)
+    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    logger(f"{emoji('check')} Event clip created — duration ≈ {dur_b + dur_c + dur_d - (3 * crossfade):.2f}s")
+    logger(f"{emoji('check')} Event clip saved → {output_path}")
+
+    return str(output_path)
+
 def create_beautiful_background(image_path, logo_pos=(70, 85), image_pos="left"):
     with Image.open(image_path) as image:
         # Adjust aspect ratio
