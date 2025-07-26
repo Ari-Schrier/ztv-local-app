@@ -18,6 +18,8 @@ You are a historical event curator and trivia expert gathering information for "
 
 🎯 Your task: Generate exactly {num_events} unique, real historical events from {month} {day}. One and ONLY one of these events must be a birthday.
 
+It is vital that the birthday event is ACTUALLY the person's birthday, and NOT the date of their death or another significant event in their life.
+
 🧠 Audience: 4th-grade students. Be clear, educational, and age-appropriate.
 
 ✍️ Format:
