@@ -4,12 +4,13 @@ import time
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from daily_chronicle.generator import generate_events
+from daily_chronicle.event_generation import generate_events
 from daily_chronicle.utils_img import generate_event_image
 from daily_chronicle.slide_generation import build_event_segment_ffmpeg_edited, generate_title_slide, cleanup_temp_files, video_paths, temp_json_files
 from daily_chronicle.audio_generation import generate_event_audio
 from daily_chronicle.utils_logging import emoji
 from daily_chronicle.utils_video import export_final_video_ffmpeg
+from daily_chronicle.slide_generation import temp_audio_files, temp_image_files
 
 # --- STEP 1: Initialization ---
 def initialize_pipeline(logger):
@@ -44,23 +45,50 @@ def load_reviewed_events(event_json_path, logger):
         return json.load(f)
 
 # --- STEP 4: Generate Assets ---
-def generate_assets(events, image_func, tts_func, temp_dir, month, day, logger):
+def generate_assets(events, image_func, tts_func, temp_dir, month, day, logger, max_retries=2):
     temp_event_assets = []
+
     for idx, event in enumerate(events):
         logger(f"\n{emoji('frame')} Generating assets for event {idx + 1}/{len(events)}...")
-        image_path = generate_event_image(event, idx, image_func, logger)
-        audio_path_1, audio_path_2 = generate_event_audio(event, idx, tts_func, logger)
+        
+        image_path = None
+        audio_paths = [None, None, None]
+
+        # --- Retry image generation ---
+        for attempt in range(1, max_retries + 1):
+            try:
+                image_path = generate_event_image(event, idx, image_func, logger)
+                break
+            except Exception as e:
+                logger(f"{emoji('cross_mark')} Image gen failed (Attempt {attempt}/{max_retries}): {e}")
+        if not image_path:
+            logger(f"{emoji('cross_mark')} Skipping event {idx + 1} due to image generation failure.")
+            continue
+
+        # --- Retry audio generation ---
+        for attempt in range(1, max_retries + 1):
+            try:
+                audio_paths = generate_event_audio(event, idx, tts_func, logger)
+                break
+            except Exception as e:
+                logger(f"{emoji('cross_mark')} TTS gen failed (Attempt {attempt}/{max_retries}): {e}")
+        if not all(audio_paths):
+            logger(f"{emoji('cross_mark')} Skipping event {idx + 1} due to TTS failure.")
+            continue
+
+        # --- If all succeeded ---
         temp_event_assets.append({
             "event_index": idx,
             "image_path": str(image_path),
-            "audio_path_1": str(audio_path_1),
-            "audio_path_2": str(audio_path_2)
+            "audio_path_1": str(audio_paths[0]),
+            "audio_path_2": str(audio_paths[1]),
+            "audio_path_3": str(audio_paths[2]),
         })
 
+    # Save final results
     asset_path = temp_dir / f"{month}_{day}_assets.json"
     with asset_path.open("w") as f:
         json.dump(temp_event_assets, f, indent=2)
-
     temp_json_files.append(str(asset_path))
 
     logger(f"{emoji('check')} Saved event assets to {asset_path}")
@@ -87,8 +115,8 @@ def generate_assets_threaded(events, image_func, tts_func, temp_dir, month, day,
             "audio_path_2": str(audio_path_2),
             "audio_path_3": str(audio_path_3),
         }
-
-    with ThreadPoolExecutor(max_workers=min(6, len(events))) as executor:
+    
+    with ThreadPoolExecutor(max_workers=min(len(events), 4)) as executor:
         for idx, event in enumerate(events):
             future = executor.submit(process_event, idx, event)
             futures.append(future)
@@ -143,7 +171,6 @@ def export_final_output(video_paths, month, day, logger):
 
 # --- STEP 8: Cleanup ---
 def cleanup(logger):
-    from daily_chronicle.slide_generation import temp_audio_files, temp_image_files, video_paths, temp_json_files
     logger(f"\n{emoji('broom')} Cleaning up temporary files...")
     cleanup_temp_files(temp_audio_files, temp_image_files, video_paths, temp_json_files, logger)
     logger(f"{emoji('check')} Temporary files cleaned up.")
