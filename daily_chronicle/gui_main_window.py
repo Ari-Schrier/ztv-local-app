@@ -6,11 +6,14 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Signal, Slot, QThreadPool, Qt
 from PySide6.QtGui import QMovie
+from daily_chronicle.audio_generation import generate_tts_gemini
 from daily_chronicle.utils_threading import WorkerRunnable
 from daily_chronicle.gui_event_review_page import EventReviewPage
 from daily_chronicle.gui_image_review_page import ImageReviewPage
 from daily_chronicle.gui_launcher_page import LauncherPage
-from daily_chronicle.pipeline import build_video_segments, cleanup, export_final_output, generate_and_save_events, generate_assets_threaded, initialize_pipeline, load_reviewed_assets, load_reviewed_events
+from daily_chronicle.pipeline import build_video_segments, cleanup, export_final_output, \
+generate_and_save_events, generate_assets, generate_assets_threaded, initialize_pipeline, \
+load_reviewed_assets, load_reviewed_events
 from daily_chronicle.utils_logging import emoji
 from daily_chronicle.utils_video import reveal_video_in_file_browser
 
@@ -23,8 +26,7 @@ class MainWindow(QWidget):
         self.setMinimumSize(800, 600)
         self.resize(1200, 800)  # User can still resize
 
-
-                # Spinner setup
+        # Spinner setup
         self.spinner_label = QLabel(self)
         self.spinner_movie = QMovie("resources/progress_spinner.gif")
         self.spinner_label.setMovie(self.spinner_movie)
@@ -147,8 +149,11 @@ class MainWindow(QWidget):
         temp_dir = Path(__file__).parent / "temp"
         temp_dir.mkdir(parents=True, exist_ok=True)
 
+        # Gemini TTS has issues with concurrency — use sequential pipeline
+        generate_fn = generate_assets if self.tts_func is generate_tts_gemini else generate_assets_threaded
+
         worker = WorkerRunnable(
-            generate_assets_threaded,
+            generate_fn,
             reviewed_events,
             self.img_func,
             self.tts_func,
@@ -157,6 +162,7 @@ class MainWindow(QWidget):
             self.day,
             self.logger
         )
+
         worker.signals.finished.connect(self.on_asset_generation_finished)
         self.thread_pool.start(worker)
 

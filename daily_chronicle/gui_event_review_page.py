@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLabel, QLineEdit, QTextEdit, QMessageBox, QFormLayout, QSizePolicy
+    QLabel, QLineEdit, QTextEdit, QMessageBox, QFormLayout
 )
 
 class EventReviewPage(QWidget):

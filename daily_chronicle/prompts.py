@@ -35,6 +35,7 @@ Responses with more than {num_events} events will be rejected. Respond ONLY with
 ]
 
 NOTES:
+- List dates as they would be spoken aloud, e.g. "On July 24th, 1897:".
 - Each event must be historically accurate and verifiable — no fiction, myth, or speculation.
 - All content must be accessible to 4th-grade learners: use clear, direct language and avoid jargon.
 - image_prompt should evoke the appropriate time period and mood, but NEVER depict visible text (i.e. like a newspaper headline).

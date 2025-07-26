@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import QDate
 
-from daily_chronicle.generator import generate_events_gemini, generate_events_openai
+from daily_chronicle.event_generation import generate_events_gemini, generate_events_openai
 from daily_chronicle.utils_img import generate_image_gemini_with_backoff, generate_image_openai_with_backoff
 from daily_chronicle.audio_generation import generate_tts_gemini, generate_tts_openai
 
@@ -20,7 +20,6 @@ class LauncherPage(QWidget):
         layout = QVBoxLayout()
 
         # Calendar
-    
         layout.addWidget(QLabel("Select a date:"))
         self.calendar = QCalendarWidget()
         self.calendar.setSelectedDate(QDate.currentDate())

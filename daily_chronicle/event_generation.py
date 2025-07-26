@@ -1,6 +1,5 @@
 # generator.py
 
-# Core libs
 import json
 
 # Import client + model IDs
@@ -44,8 +43,6 @@ HISTORICAL_EVENT_LIST_SCHEMA = {
     "additionalProperties": False
 }
 
-
-
 # Gemini
 def generate_events_gemini(month: str, day: int, num_events: int = 3) -> list[HistoricalEvent]:
     prompt = EVENT_GENERATION_PROMPT_TEMPLATE.format(month=month, day=day, num_events=num_events)
@@ -88,7 +85,6 @@ def generate_events_openai(month: str, day: int, num_events: int = 3) -> list[Hi
     except Exception as e:
         print(f"❌ OpenAI event parsing failed: {e}")
         return []
-
 
 # === Generate Events Function ===
 def generate_events(month: str, day: int, num_events, event_generator_function) -> list[HistoricalEvent]:
