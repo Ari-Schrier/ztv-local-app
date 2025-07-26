@@ -72,7 +72,7 @@ def main():
         result = get_public_domain_image(query)
         
         if result["status"] == "success":
-            print(f"✅ Found public domain image:")
+            print("✅ Found public domain image:")
             print(f"Title: {result['title']}")
             print(f"URL: {result['image_url']}")
             print(f"License: {result['license']} ({result['license_url']})")

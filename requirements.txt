@@ -8,5 +8,4 @@ openai
 IPython
 requests
 opencv-python
-dearpygui
 pyside6

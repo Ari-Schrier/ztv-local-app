@@ -1,12 +1,8 @@
 import subprocess
 from moviepy.editor import VideoFileClip, concatenate_videoclips
-
-
 from datetime import datetime
 from pathlib import Path
-
 import os
-import subprocess
 import platform
 
 def reveal_video_in_file_browser(path: str):

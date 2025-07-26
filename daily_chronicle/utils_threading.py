@@ -1,5 +1,5 @@
 # daily_chronicle/utils_threading.py
-from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal, Slot
+from PySide6.QtCore import QObject, QRunnable, Signal, Slot
 
 class WorkerSignals(QObject):
     finished = Signal(object)
