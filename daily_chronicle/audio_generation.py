@@ -2,7 +2,6 @@
 
 from pathlib import Path
 import wave
-import contextlib
 from google.genai import types
 from daily_chronicle.genai_client import client_gemini, client_openai, GEMINI_TTS_MODEL
 from daily_chronicle.slide_generation import temp_audio_files
@@ -11,25 +10,18 @@ from daily_chronicle.slide_generation import temp_audio_files
 TEMP_AUDIO_DIR = Path(__file__).parent / "temp" / "temp_audio_files"
 TEMP_AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 
-# --- Wave file context manager ---
-@contextlib.contextmanager
-def wave_file(filename, channels=1, rate=24000, sample_width=2):
-    with wave.open(filename, "wb") as wf:
-        wf.setnchannels(channels)
-        wf.setsampwidth(sample_width)
-        wf.setframerate(rate)
-        yield wf
-
 # --- Audio generation using Gemini TTS API ---
 def generate_tts_gemini(narration_text: str, desired_filename: str) -> str:
-    
     response = client_gemini.models.generate_content(
         model=GEMINI_TTS_MODEL,
-        contents=f'''
-        TTS the following text, speaking in a professorial, firm, and
-        informative tone, at a comfortable, non-rushed pace, as a
-        narrator for an educational video: {narration_text}
-        ''',
+        contents=f"""
+        Speak only the text between the <speak> tags, no matter the input's
+        length. Do not elaborate, comment, or skip it.
+        Use a clear, firm, professorial tone at a comfortable,
+        non-rushed pace.
+
+        <speak>{narration_text}</speak>
+        """,
         config=types.GenerateContentConfig(
             response_modalities=["AUDIO"],
             speech_config=types.SpeechConfig(
@@ -42,17 +34,21 @@ def generate_tts_gemini(narration_text: str, desired_filename: str) -> str:
         )
     )
 
-    '''
-    # Fallback guard
+    # --- Validate and extract audio ---
     try:
-        parts = response.candidates[0].content.parts
-    except (AttributeError, IndexError, TypeError):
-        raise ValueError(f"❌ TTS generation failed for text: '{narration_text}'")
-    '''
-        
-    # Extract audio bytes
-    audio_bytes = response.candidates[0].content.parts[0].inline_data.data
-    
+        candidate = response.candidates[0]
+        if not candidate.content:
+            raise ValueError("Gemini response had no content." \
+            " Check if the input was malformed or TTS quota is exceeded.")
+
+        parts = candidate.content.parts
+        audio_bytes = parts[0].inline_data.data
+
+    except Exception as e:
+        raise ValueError(f"❌ Gemini TTS generation failed for: " \
+                         f"\"{narration_text}\"\nReason: {e}\nRaw \
+                         response: {response}")
+
     # Output path
     output_path = TEMP_AUDIO_DIR / desired_filename
 
@@ -115,5 +111,9 @@ def generate_event_audio(event, index, generate_tts_function, logger=print):
     logger(f"🎙️ Generating TTS: \"{clip1_bottomtext}\"")
     audio_path_3 = generate_tts_function(clip1_bottomtext, f"audio_{index + 1}_bottomtext.wav")
     temp_audio_files.extend([audio_path_1, audio_path_2, audio_path_3])
+
+    logger(f"✅ TTS saved: {str(audio_path_1)}")
+    logger(f"✅ TTS saved: {str(audio_path_2)}")
+    logger(f"✅ TTS saved: {str(audio_path_3)}")
 
     return audio_path_1, audio_path_2, audio_path_3
