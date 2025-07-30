@@ -1,0 +1,6 @@
+moviepy==1.0.3
+Pillow
+google-genai
+openai
+pyside6
+python-dotenv
