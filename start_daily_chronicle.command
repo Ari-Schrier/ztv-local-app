@@ -12,11 +12,32 @@ git pull || {
     exit 1
 }
 
+# Create virtual environment if it doesn't exist
+if [ ! -d ".venv" ]; then
+    echo "🔧 Creating virtual environment..."
+    python3 -m venv .venv || {
+        echo "❌ Error: Failed to create virtual environment."
+        exit 1
+    }
+fi
+
 # Activate the virtual environment
 source .venv/bin/activate || {
     echo "❌ Error: Failed to activate virtual environment."
     exit 1
 }
+
+# Install dependencies if needed
+if [ ! -d ".venv/lib" ]; then
+    echo "📦 Installing dependencies..."
+    pip install -r requirements-trial.txt || { # swap this to requirements.txt later once overwritten
+        echo "❌ Error: Failed to install dependencies."
+        exit 1
+    }
+else
+    echo "📦 Skipping pip install — dependencies appear to be in place."
+fi
+
 
 # Start the Daily Chronicle program
 python3 -m daily_chronicle.main || {
