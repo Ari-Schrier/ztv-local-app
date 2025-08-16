@@ -23,8 +23,8 @@ fi
 echo "🐍 Using Python: $($PY_BIN -V)"
 
 echo
-echo "=== 🧩 Running qt_imagecheck.py (JPEG plugin check) ==="
-$PY_BIN qt_imagecheck.py || echo "⚠️ qt_imagecheck.py exited with error"
+echo "=== 🧩 Running qt_test_imagecheck.py (JPEG plugin check) ==="
+$PY_BIN qt_test_imagecheck.py || echo "⚠️ qt_test_imagecheck.py exited with error"
 
 echo
 echo "=== 🖼️ Running qt_test_placeholder.py (placeholder load test) ==="

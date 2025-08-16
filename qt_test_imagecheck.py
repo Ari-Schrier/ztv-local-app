@@ -1,8 +1,8 @@
-# qt_imagecheck.py
+# qt_test_imagecheck.py
 # Usage:
-#   ./.venv/bin/python qt_imagecheck.py
+#   ./.venv/bin/python qt_test_imagecheck.py
 # Optional (verbose plugin logging):
-#   QT_DEBUG_PLUGINS=1 ./.venv/bin/python qt_imagecheck.py
+#   QT_DEBUG_PLUGINS=1 ./.venv/bin/python qt_test_imagecheck.py
 
 import os
 import sys
