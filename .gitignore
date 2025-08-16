@@ -9,3 +9,4 @@
 daily_chronicle/temp/
 daily_chronicle/outputs/
 outputs/
+*/.DS_Store
