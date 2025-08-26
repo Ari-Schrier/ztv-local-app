@@ -34,8 +34,9 @@ def _is_cc0_or_public_domain(extmeta: dict) -> bool:
     license_code  = getv("License").lower()               # e.g., "cc-zero", "pd-usgov", etc.
 
     # CC0 checks
+    ##SET TO TRUE IF WE WANT TO START USING CC0
     if "cc0" in license_short or "cc0" in license_code or "publicdomain/zero" in license_url:
-        return True
+        return False
 
     # Public domain checks
     if "public domain" in license_short:

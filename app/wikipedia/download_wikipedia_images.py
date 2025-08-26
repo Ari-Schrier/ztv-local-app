@@ -104,8 +104,3 @@ def download_all_images(location, imagesDict):
             results.append({"file_title": file_title, "url": url, "path": None, "ok": False, "error": str(e)})
 
     return results
-
-images = mf.get_pd_cc0_images("Alfred (village), New York", lang="en")
-report = download_all_images("images/alfred", images)
-for r in report:
-    print("OK " if r["ok"] else "ERR", r["path"] or r["file_title"], r["error"] or "")

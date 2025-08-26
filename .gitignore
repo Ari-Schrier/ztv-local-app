@@ -5,3 +5,5 @@
 *.mp3
 *.mp4
 *.pyc
+.vscode/settings.json
+app/wikipedia/output
