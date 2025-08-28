@@ -11,6 +11,10 @@ set -euo pipefail
 # -u : error on undefined variables
 # -o pipefail : pipeline fails if any component fails
 
+# Add timestamps to command trace
+export PS4='+ $(date "+%H:%M:%S") '
+set -x
+
 # Ensure we run from the folder where this script lives
 cd -- "$(dirname -- "${BASH_SOURCE[0]:-$0}")"
 
