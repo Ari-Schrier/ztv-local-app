@@ -7,6 +7,12 @@ def get_wrapped_text(draw, text, font, max_width):
     current_line = []
     
     for word in words:
+        if word == "*BREAK*":
+            lines.append(' '.join(current_line))
+            lines.append(' ')
+            current_line = []
+            highest_width = max(highest_width, width)
+            continue
         # Test if the current line with the new word fits within the width
         test_line = ' '.join(current_line + [word])
         bbox = draw.textbbox((0, 0), test_line, font=font)  # Get bounding box of the text
@@ -53,7 +59,7 @@ def fit_text_to_box(draw, text, max_width, max_height, font_path, initial_font_s
             # If the total height fits, we are done
             return lines, font_size
 
-def create_text_image(background, text, font_path, initial_font_size, interline_factor, max_width, max_height, left_margin, y_position):
+def create_text_image(background, text:[str], font_path, initial_font_size, interline_factor, max_width, max_height, left_margin, y_position):
     """Replicate the behavior of MoviePy's TextClip using PIL with proper line height and text wrapping."""
     # Create a blank image with a large enough size
     img = Image.open(background)  # Adjust size and background color
@@ -77,7 +83,7 @@ def create_text_image(background, text, font_path, initial_font_size, interline_
     # Save or display the image
     return img, y_pos
 
-def make_title_page(text, background, location, font_path="resources/HelveticaNeueBold.otf", size=(1920, 1080)):
+def make_title_page(text, background, location, font_path="resources/HelveticaNeueThin.otf", size=(1920, 1080)):
     bg = Image.open(background)
     draw = ImageDraw.Draw(bg)
     caption = "today in history"
@@ -92,7 +98,7 @@ def make_title_page(text, background, location, font_path="resources/HelveticaNe
     for line in lines:
         draw.text((120, y_pos), line, font=font, fill="white")  # Draw text line
         y_pos += adjusted_line_height  # Move to the next line with the adjusted line height
-    draw.text((120, y_pos+48), text.lower().replace("_", " "), font=ImageFont.truetype("resources/HelveticaNeueThin.otf", 88), fill="white")
+    draw.text((120, y_pos+24), text.lower().replace("_", " "), font=ImageFont.truetype("resources/HelveticaNeueBold.otf", 88), fill="white")
     watermark = Image.open("resources/logo_small.png")
     bg.paste(watermark, (70, 85), watermark)
     # Save or display the image

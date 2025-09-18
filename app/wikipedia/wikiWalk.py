@@ -16,25 +16,15 @@ def processPics(day):
     with open(initialJsonLocation, encoding="utf-8") as file:
         data = json.load(file)
     for entry in data:
-        imgPath = f"{FILEPATH}/{day}/{entry['subject'].replace(' ', '_')}/processedImages"
+        imgPath = f"{FILEPATH}/{day}/{entry['page'].replace(' ', '_')}/processedImages"
         if len(os.listdir(imgPath)) == 0:
-            process_images(f"{FILEPATH}/{day}/{entry['subject'].replace(' ', '_')}/rawImages", imgPath)
+            process_images(f"{FILEPATH}/{day}/{entry['page'].replace(' ', '_')}/rawImages", imgPath)
             if len(os.listdir(imgPath)) == 0:
                 print(entry["prompt"])
                 wikipediaAiFunctions.generatePicture(entry["prompt"], imgPath +"/generatedImage.png")
 
-def processConcept(day, wiki, struct):
-    fileStart = f"{FILEPATH}/{day}/{struct['subject'].replace(' ', '_')}"
-    newLocation = f"{fileStart}/script.json"
-    directory = os.path.dirname(newLocation)
-    os.makedirs(directory, exist_ok=True)
-    page = wiki.page(struct["subject"])
-
-    wikipediaAiFunctions.saveJSON(
-        newLocation,
-        f"Date: {day}\nTopic: {struct['summary']}\n article: {page.text}",
-        True
-    )
+def processConcept(day, struct):
+    fileStart = f"{FILEPATH}/{day}/{struct['page'].replace(' ', '_')}"
 
     rawImageLocation = f"{fileStart}/rawImages"
     directory = os.path.dirname(rawImageLocation)
@@ -44,7 +34,7 @@ def processConcept(day, wiki, struct):
     directory = os.path.dirname(processedImageLocation)
     os.makedirs(directory, exist_ok=True)
 
-    legalImages = get_pd_cc0_images(struct["subject"])
+    legalImages = get_pd_cc0_images(struct["page"])
     download_all_images(fileStart+"/rawImages", legalImages)
     with open(f"{fileStart}/images.json", 'w') as filePath:
         json.dump(legalImages, filePath, indent=4)
@@ -56,16 +46,17 @@ def wikiWalk(day):
     initialJsonLocation = f"{FILEPATH}/{day}/selections.json"
     directory = os.path.dirname(initialJsonLocation)
     os.makedirs(directory, exist_ok=True)
-    wiki = wikipediaapi.Wikipedia(user_agent='ZinniaTestAgent (schrier.a@northeastern.edu)', language='en')
 
-    page = wiki.page(day.replace("_"," "))
+    if not os.path.exists(initialJsonLocation):
 
-    wikipediaAiFunctions.saveJSON(initialJsonLocation, f"You are selecting topics for a video on {page.title}\n" + page.text, False)
+        command = wikipediaAiFunctions.getRelevantDataForDate(day.replace("_", " "))
+
+        wikipediaAiFunctions.saveJSON(initialJsonLocation, command)
 
     with open(initialJsonLocation, encoding="utf-8") as file:
         data = json.load(file)
     for each in data:
-        processConcept(day, wiki, each)
+        processConcept(day, each)
 
 def finishWalk(day):
     if os.path.exists(f"output/todayInHistory/{day}.mp4"):
@@ -73,20 +64,20 @@ def finishWalk(day):
     initialJsonLocation = f"{FILEPATH}/{day}/selections.json"
     with open(initialJsonLocation, encoding="utf-8") as file:
         data = json.load(file)
-    for i, entry in enumerate(data):
-        fileStart = f"{FILEPATH}/{day}/{entry['subject'].replace(' ', '_')}"
+    for i, script in enumerate(data):
+        fileStart = f"{FILEPATH}/{day}/{script['page'].replace(' ', '_')}"
         if i == 0:
-            slide.makeSlidesForFolder(fileStart, day.replace("_", " "))
+            slide.makeSlidesForFolder(fileStart, script, day.replace("_", " "))
         elif i == len(data)-1:
-            slide.makeSlidesForFolder(fileStart, "thank you")
+            slide.makeSlidesForFolder(fileStart, script, "thank you")
         else:
-            slide.makeSlidesForFolder(fileStart, "")
-        with open(fileStart+"/script.json", encoding="utf-8") as f:
-            script = json.load(f)[0]
+            slide.makeSlidesForFolder(fileStart, script, "")
+        
+        script["description"] = script["description"] + "\n\n" + script["detail"]
             
-        for each in ["SlideOne", "SlideTwo"]:
+        for each in ["header_title", "description"]:
             if not os.path.exists(f"{fileStart}/{each}.mp3"):
-                #wikipediaAiFunctions.getSpeech(f"{fileStart}/{each}.mp3", script[each])
+                wikipediaAiFunctions.getSpeech(f"{fileStart}/{each}.mp3", script[each])
 
                 command = f'ffmpeg -f lavfi -t 2.5 -i anullsrc=r=48000:cl=stereo -i {fileStart}/{each}.mp3 -f lavfi -t 1.5 -i anullsrc=r=48000:cl=stereo -filter_complex "[0:a][1:a][2:a]concat=n=3:v=0:a=1[a]" -map "[a]" -c:a aac -b:a 192k {fileStart}/{each}.m4a'
 
@@ -97,31 +88,29 @@ def finishWalk(day):
 
                 subprocess.run(command, shell=True, check=True)
 
-        videos = [f"{fileStart}/{each}.mp4" for each in ["SlideOne", "SlideTwo"]]
+        videos = [f"{fileStart}/{each}.mp4" for each in ["header_title", "description"]]
         for each in videos: print(each)
         video_titles = " ".join(videos)
         print(video_titles)
         video_titles += " resources/blackspace.mp4"
 
-        print(f"About to try to make:\n{fileStart}/{entry['subject'].replace(' ','_')}.mp4")
-
-        command = f"ffmpeg-concat -t fade -d {1.5*1000} -o {fileStart}/{entry['subject'].replace(' ','_')}.mp4 {video_titles}"
+        command = f"ffmpeg-concat -t fade -d {1.5*1000} -o {fileStart}/{script['page'].replace(' ','_')}.mp4 {video_titles}"
         print(f"Making subFinal with command:\n{command}\n")
-        if not os.path.exists(f"{fileStart}/{entry['subject'].replace(' ','_')}.mp4"):
+        if not os.path.exists(f"{fileStart}/{script['page'].replace(' ','_')}.mp4"):
             subprocess.run(command, shell=True, check=True)
 
     
-    firstThing = data[0]['subject'].replace(' ', '_')
+    firstThing = data[0]['page'].replace(' ', '_')
     bgLocation = f"{FILEPATH}/{day}/{firstThing}"
     command = f"ffmpeg -loop 1 -i {bgLocation}/bg.png -i resources/todayInHistoryIntro.m4a -r 30 -c:v libx264 -tune stillimage -pix_fmt yuv420p -crf 18 -preset veryfast -c:a aac -b:a 192k -shortest {f'{FILEPATH}/{day}/title'}.mp4"
     subprocess.run(command, shell=True, check=True)
-    lastThing = data[len(data)-1]['subject'].replace(' ', '_')
+    lastThing = data[len(data)-1]['page'].replace(' ', '_')
     bgLocation = f"{FILEPATH}/{day}/{lastThing}"
     command = f"ffmpeg -loop 1 -i {bgLocation}/bg.png -i resources/todayInHistoryOutro.m4a -r 30 -c:v libx264 -tune stillimage -pix_fmt yuv420p -crf 18 -preset veryfast -c:a aac -b:a 192k -shortest {f'{FILEPATH}/{day}/end'}.mp4"
     subprocess.run(command, shell=True, check=True)
     videos = [f'{FILEPATH}/{day}/title.mp4']
     for each in data:
-        videos.append(f"{FILEPATH}/{day}/{each['subject'].replace(' ', '_')}/{each['subject'].replace(' ', '_')}.mp4")
+        videos.append(f"{FILEPATH}/{day}/{each['page'].replace(' ', '_')}/{each['page'].replace(' ', '_')}.mp4")
     videos.append(f'{FILEPATH}/{day}/end.mp4')
     videos.append('resources/endcredits_silent.mp4')
     video_titles = " ".join(videos)
@@ -130,8 +119,7 @@ def finishWalk(day):
     subprocess.run(command, shell=True, check=True)
 
 if __name__ == "__main__":
-    startTime = time.time()
-    day = f"september_{2}"
-    finishWalk(day)
-    endTime = time.time()
-    print(endTime-startTime)
+    print("Running!")
+    for i in range(16, 25):
+        finishWalk(f"october_{i}")
+    print("Dekimashita!")

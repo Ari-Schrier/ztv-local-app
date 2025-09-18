@@ -11,7 +11,7 @@ FONT = "resources/HelveticaNeueMedium.otf"
 QUESTION_SIZE = 72
 ANSWER_SIZE = 54
 LEFT_MARGIN = 85
-INTERLINE = 1.2
+INTERLINE = 1.3
 AUDIO_SPEED = .95
 DELAY_BEFORE_SPEECH = 2
 PAUSE_AFTER_SPEECH = 3
@@ -31,7 +31,7 @@ def make_slide(background_location:str, text:str, y, answer=True):
         initial_font_size=ANSWER_SIZE if answer else QUESTION_SIZE, 
         interline_factor=INTERLINE, 
         max_width=1920 - 1080 -85, 
-        max_height=1920 - 1080 -85, 
+        max_height=1920 - 1080 -(85*3) + 10 if answer else 200,
         left_margin=LEFT_MARGIN, 
         y_position=y
     )
@@ -85,11 +85,7 @@ def process_background(image_path):
         final_image_path = f'output/testCase/background.png'
         final_background.save(final_image_path)
     
-def makeSlidesForFolder(folderPath, titleText=""):
-    with open(folderPath+"/script.json", "r", encoding="utf-8") as f:
-        script = json.load(f)
-
-    script = script[0]
+def makeSlidesForFolder(folderPath, script, titleText=""):
     
     imgPath = ""
     print(f"Checking for images in {folderPath+'/processedImages'}")
@@ -101,21 +97,25 @@ def makeSlidesForFolder(folderPath, titleText=""):
 
     if titleText != "":
         make_title_page(titleText, "output/testCase/background.png", folderPath+"/bg.png")
-
-    for each in ["SlideOne", "SlideTwo"]:
-        completed, chaff = make_slide("output/testCase/background.png", script[each], 207, False)
-        completed.save(f"{folderPath}/{each}.png")
+    prev = "output/testCase/background.png"
+    top = 207
+    for each in ["header_title", "description"]:
+        if each == "header_title":
+            text = script[each]
+        else:
+            text = script[each]+" *BREAK* "+script["detail"]
+        completed, bottom = make_slide(prev, text, top, top!=207)
+        top = bottom
+        prev = f"{folderPath}/{each}.png"
+        completed.save(prev)
 
 if __name__ == "__main__":
     myslide = {
-        "topic": "Emma Nutt",
-        "Introduction": "On September 1, 1878 Emma Nutt began work in Boston as the world's first female telephone operator for the Boston Telephone Dispatch Company.",
-        "BodyOne": "Boys had been operators but their impatience and pranks upset callers, so Emma's soothing, cultured voice and patience won customers and changed hiring.",
-        "BodyTwo": "Her sister Stella became the second operator hours later; Emma worked 33-37 years, earned $10 per month for a 54-hour week, and memorized the company directory.",
-        "Ending": "She is honored by a synthesized attendant called \"EMMA\" and September 1 is unofficially celebrated as Emma M. Nutt Day."
-}
-    process_background("output/testCase/emma.jpg")
-    for each in ["Introduction", "BodyOne", "BodyTwo", "Ending"]:
-        completed, chaff = make_slide("output/testCase/background.png", myslide[each], 207, False)
-        completed.save(f"output/testCase/emma{each}.png")
-    #make_title_page("All About Dogs", f'output/testoutput_background1.png')
+        "header_title": "East German Refugees Allowed to Leave Hungary",
+        "description": "On September 11th, 1989: Hungary announced that East German refugees in its camps could travel to West Germany.",
+        "detail": "This decision helped many families move and was an important moment near the end of the Cold War.",
+        "image_prompt": "Groups of people with suitcases and coats smiling and talking on a train station platform, late 1980s clothing, hopeful mood, no visible text",
+        "page": "Hungary"
+    }
+
+    makeSlidesForFolder("app/wikipedia/output/september_11/Hungary", myslide, "September 11")
