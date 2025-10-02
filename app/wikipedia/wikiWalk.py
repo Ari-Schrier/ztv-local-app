@@ -64,6 +64,14 @@ def finishWalk(day):
     initialJsonLocation = f"{FILEPATH}/{day}/selections.json"
     with open(initialJsonLocation, encoding="utf-8") as file:
         data = json.load(file)
+    num = int(day.split("_")[1])
+    voices = [
+    "alloy",
+    "ash",
+    "coral",
+    "sage"
+    ]
+    voice = voices[num%4]
     for i, script in enumerate(data):
         fileStart = f"{FILEPATH}/{day}/{script['page'].replace(' ', '_')}"
         if i == 0:
@@ -77,7 +85,8 @@ def finishWalk(day):
             
         for each in ["header_title", "description"]:
             if not os.path.exists(f"{fileStart}/{each}.mp3"):
-                wikipediaAiFunctions.getSpeech(f"{fileStart}/{each}.mp3", script[each])
+
+                wikipediaAiFunctions.getSpeech(f"{fileStart}/{each}.mp3", script[each], voice)
 
                 command = f'ffmpeg -f lavfi -t 2.5 -i anullsrc=r=48000:cl=stereo -i {fileStart}/{each}.mp3 -f lavfi -t 1.5 -i anullsrc=r=48000:cl=stereo -filter_complex "[0:a][1:a][2:a]concat=n=3:v=0:a=1[a]" -map "[a]" -c:a aac -b:a 192k {fileStart}/{each}.m4a'
 
@@ -102,11 +111,11 @@ def finishWalk(day):
     
     firstThing = data[0]['page'].replace(' ', '_')
     bgLocation = f"{FILEPATH}/{day}/{firstThing}"
-    command = f"ffmpeg -loop 1 -i {bgLocation}/bg.png -i resources/todayInHistoryIntro.m4a -r 30 -c:v libx264 -tune stillimage -pix_fmt yuv420p -crf 18 -preset veryfast -c:a aac -b:a 192k -shortest {f'{FILEPATH}/{day}/title'}.mp4"
+    command = f"ffmpeg -loop 1 -i {bgLocation}/bg.png -i resources/{voice}Intro.m4a -r 30 -c:v libx264 -tune stillimage -pix_fmt yuv420p -crf 18 -preset veryfast -c:a aac -b:a 192k -shortest {f'{FILEPATH}/{day}/title'}.mp4"
     subprocess.run(command, shell=True, check=True)
     lastThing = data[len(data)-1]['page'].replace(' ', '_')
     bgLocation = f"{FILEPATH}/{day}/{lastThing}"
-    command = f"ffmpeg -loop 1 -i {bgLocation}/bg.png -i resources/todayInHistoryOutro.m4a -r 30 -c:v libx264 -tune stillimage -pix_fmt yuv420p -crf 18 -preset veryfast -c:a aac -b:a 192k -shortest {f'{FILEPATH}/{day}/end'}.mp4"
+    command = f"ffmpeg -loop 1 -i {bgLocation}/bg.png -i resources/{voice}Outro.m4a -r 30 -c:v libx264 -tune stillimage -pix_fmt yuv420p -crf 18 -preset veryfast -c:a aac -b:a 192k -shortest {f'{FILEPATH}/{day}/end'}.mp4"
     subprocess.run(command, shell=True, check=True)
     videos = [f'{FILEPATH}/{day}/title.mp4']
     for each in data:
@@ -120,6 +129,6 @@ def finishWalk(day):
 
 if __name__ == "__main__":
     print("Running!")
-    for i in range(16, 25):
-        finishWalk(f"october_{i}")
+    for i in range(9, 15):
+        finishWalk(f"november_{i}")
     print("Dekimashita!")

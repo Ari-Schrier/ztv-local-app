@@ -118,7 +118,7 @@ def getSpeech(filename, text, voice="echo"):
     
     response = client.audio.speech.create(
         model="gpt-4o-mini-tts",
-        voice="echo",
+        voice=voice,
         instructions=audioInstructions,
         input=text
     )
