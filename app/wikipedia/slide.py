@@ -56,7 +56,7 @@ def process_background(image_path):
 
         # Apply a black opacity scrim
         overlay = int((OVERLAY_OPACITY/100)*255)
-        overlay = Image.new('RGBA', resized_image.size, (0, 0, 0, 255//overlay))
+        overlay = Image.new('RGBA', resized_image.size, (0, 0, 0, overlay))
         image_with_scrim = Image.alpha_composite(resized_image.convert('RGBA'), overlay)
 
         # Apply a heavy blur to the image (this will serve as the background)
