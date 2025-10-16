@@ -15,7 +15,7 @@ Responses with more than 15 events will be rejected. Respond ONLY with a valid J
         "description": "[One sentence summary of the event. Make sure to include the date and year of the event in question.]",
         "detail": "[Another sentence adding additional details or context.]",
         "image_prompt": "[...]",
-        "page":"[The title of a wikipedia page for the event, person, or place being talked about.]",
+        "page":"[The title of a wikipedia page for the event, person, or place being talked about. DO NOT INCLUDE ANY SPECIAL CHARACTERS OTHER THAN SPACES. This should be letters and numbers ONLY!]",
     }},
 ]
 
