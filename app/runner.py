@@ -2,7 +2,7 @@
 Runs the quiz-generator
 """
 import os
-from AI.stableFunctions import getPathToImage
+from AI.aiFunctions import generatePicture, saveJSON
 from quizMaker import preprocess_quiz, finish_quiz, scramble_answers
 from jsonValidator import validate_json
 from imgCropper import process_images
@@ -26,13 +26,13 @@ class Program_Runner:
         with open(f"output/{title}/{title}.json", "r", encoding="utf-8") as file:
             json_data = json.load(file)
         if specific_image:
-            path = getPathToImage(title, json_data[specific_image]["prompt"], specific_image, ratio = "1:1")
+            path = generatePicture(json_data[specific_image]["prompt"], f"output/{title}/images/{i}.png")
             return
         for i in range(0, len(json_data)):
             if not os.path.exists(f"output/{title}/images/{i}.png"):
                 json_data[i]["id"] = i
                 print(f"Processing image {i}/{len(json_data)-1} (This will take a bit)")
-                path = getPathToImage(title, json_data[i]["prompt"], i, ratio = "1:1")
+                path = generatePicture(json_data[i]["prompt"],f"output/{title}/images/{i}.png")
                 path = f"output/{title}/images/{i}.png"
                 json_data[i]["image_path"] = path
                 print("Processed!")
@@ -49,9 +49,10 @@ class Program_Runner:
         if not os.path.exists(path):
             os.mkdir(path)
         self.make_directories()
-        if not os.path.exists(path+"/"+self.title+".json"):
-            while not os.path.exists(path+"/"+self.title+".json"):
-                input(f"{self.title}.json was not found. Drop it into the output/{self.title} directory and press enter to proceed")
+        while not os.path.exists(path+"/"+self.title+".json"):
+            ans = input(f"{self.title}.json was not found. Drop it into the output/{self.title} directory and press enter to proceed\nEnter 'g' to automatically generate a json.")
+            if ans.strip().lower() == "g":
+                saveJSON(self.title, "ten")
         
         valid_json = validate_json(path+"/"+self.title+".json")
         while not valid_json:

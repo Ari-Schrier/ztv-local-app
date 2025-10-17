@@ -156,13 +156,38 @@ def preprocess_quiz(title):
         title_name = f"output/{title}/tempVids/title.mp4"
         clips = [title_name]
 
+        actor = False
+        VOICES = [
+        "alloy",
+        "ash",
+        "coral",
+        "sage"
+        ]
+
+        while not actor:
+            print("Choose an actor:")
+            cnt = 1
+            for voice in VOICES:
+                print(f"{cnt}: {voice.title()}")
+                cnt += 1
+            cnt = 0
+            choice = input()
+            if choice.lower in VOICES:
+                actor = choice.lower
+            elif choice.isdigit:
+                if int(choice)-1 < len(VOICES):
+                    actor = VOICES[int(choice)-1]
+            else:
+                print("Did not recognize input.")
+
+
         first_slide = "Taco"
         if not os.path.exists(f"output/{title}/audio/title.mp3"):
             accepted = "N"
             while accepted != "y":
                 title_speech = input("What would you like the introduction to this video to say?")
                 accepted = input(f"Is {title_speech} correct? (y/n)").lower()
-            getTitleAudio(title, title_speech)
+            getTitleAudio(title, title_speech,actor=actor)
 
         for i in range(0, len(quiz)):
             if os.path.exists(f"output/{title}/images/{i}.png"):
@@ -173,7 +198,7 @@ def preprocess_quiz(title):
                 else:
                     print(f"Working slide {i}")
                     Slide(title, i, quiz[i])
-                    getAudioFor(title, quiz[i])
+                    getAudioFor(title, quiz[i], actor=actor)
                     question= makeClip(title, i)
                     clips.append(question)
         firstclip = clips [0:2]

@@ -3,26 +3,25 @@ import os
 from AI.aiFunctions import getSpeech
 import random
 
-VOICE_ACTOR= "echo"
 #All extant voice actors: ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
 
-def getTitleAudio(title, intro):
+def getTitleAudio(title, intro, actor):
     destination = os.path.join("output", title, "audio","title.mp3")
-    getSpeech(destination, intro, VOICE_ACTOR)
+    getSpeech(destination, intro, actor)
 
 #Fetches audio via openAI API of the chosen voice actor reading all lines.
-def getAudioFor(video_title, question):
+def getAudioFor(video_title, question, actor):
     destination = f"output/{video_title}/audio/{question['id']}_"
     for each in ["question", "fun_fact", "answer_statement"]:
         if not os.path.exists(destination+each+".mp3"):
-            getSpeech(destination+each+".mp3", question[each], VOICE_ACTOR)
+            getSpeech(destination+each+".mp3", question[each], actor)
     if not os.path.exists(destination + "A.mp3"):
-        getSpeech(destination + "A.mp3", "Is the answer " + question["A"] +"?", VOICE_ACTOR)
+        getSpeech(destination + "A.mp3", "Is the answer " + question["A"] +"?", actor)
     for each in ["B"]:
         if not os.path.exists(destination+each+".mp3"):
-            getSpeech(destination+each+".mp3", "Is it " + question[each] +"?", VOICE_ACTOR)
+            getSpeech(destination+each+".mp3", "Is it " + question[each] +"?", actor)
     if not os.path.exists(destination + "C.mp3"):
-        getSpeech(destination + "C.mp3", "Or is it " + question["C"] +"?", VOICE_ACTOR)
+        getSpeech(destination + "C.mp3", "Or is it " + question["C"] +"?", actor)
     
 #Combines multiple video clips with a crossfade effect
 def combine_videos_with_transition(clips, transition_duration):

@@ -129,6 +129,6 @@ def finishWalk(day):
 
 if __name__ == "__main__":
     print("Running!")
-    for i in range(9, 15):
+    for i in range(8, 15):
         finishWalk(f"november_{i}")
     print("Dekimashita!")
