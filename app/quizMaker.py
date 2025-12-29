@@ -1,3 +1,4 @@
+import subprocess
 from moviepy.editor import *
 from moviepy.audio.fx.all import audio_fadein, audio_fadeout
 from Slide_Creation.Slide import Slide
@@ -8,6 +9,7 @@ import json
 from videoFunctions import *
 from random import shuffle
 from ffmpeg import merge_crossfade_ffmpeg as ffmpeg_crossfade
+from pathlib import Path
 
 BLUR_STRENGTH = 200
 OVERLAY_OPACITY = 60
@@ -135,7 +137,18 @@ def finish_quiz(title, questions):
     questions.append(os.path.join("resources", "endcredits_silent.mp4"))
 
     output_path = os.path.join("output", title, f"{title}.mp4")
-    ffmpeg_crossfade(questions, output_path, 1.5)
+    ffmpeg_crossfade(questions, "temp_" + output_path, 1.5)
+    cmd = f"""ffmpeg -y -i {"temp_" + output_path} \
+    -map 0:v:0 -map 0:a? \
+    -c:v copy \
+    -c:a aac -b:a 192k -ac 2 -ar 48000 \
+    -movflags +faststart \
+    {output_path}"""
+    subprocess.run(cmd, shell=True, check=True)
+
+    tmp = Path("temp_" + output_path)
+    if tmp.exists():
+        tmp.unlink()
     print(f"Successfully created video: {output_path}")
 
 def make_directories(title):

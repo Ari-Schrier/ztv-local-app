@@ -8,6 +8,7 @@ import subprocess
 import os
 import json
 import time
+from pathlib import Path
 
 FILEPATH = f"app/wikipedia/output"
 
@@ -124,11 +125,26 @@ def finishWalk(day):
     videos.append('resources/endcredits_silent.mp4')
     video_titles = " ".join(videos)
     print("Making Finale")
-    command = f"ffmpeg-concat -t fade -d {1.5*1000} -o output/todayInHistory/{day}.mp4 {video_titles}"
+    command = f"ffmpeg-concat -t fade -d {1.5*1000} -o output/todayInHistory/tmp_{day}.mp4 {video_titles}"
     subprocess.run(command, shell=True, check=True)
+
+    cmd = f"""ffmpeg -y -i output/todayInHistory/tmp_{day}.mp4 \
+    -map 0:v:0 -map 0:a? \
+    -c:v copy \
+    -c:a aac -b:a 192k -ac 2 -ar 48000 \
+    -movflags +faststart \
+    output/todayInHistory/{day}.mp4"""
+    subprocess.run(cmd, shell=True, check=True)
+
+    tmp = Path(f"output/todayInHistory/tmp_{day}.mp4")
+    if tmp.exists():
+        tmp.unlink()
+
+    
 
 if __name__ == "__main__":
     print("Running!")
-    for i in range(8, 15):
-        finishWalk(f"november_{i}")
+    
+    for i in range(16, 17):
+        wikiWalk(f"january_{i}")
     print("Dekimashita!")
